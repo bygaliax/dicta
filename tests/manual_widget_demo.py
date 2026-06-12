@@ -4,6 +4,7 @@ Uso:
     python tests/manual_widget_demo.py            # cicla estados cada 2s
     python tests/manual_widget_demo.py --shots X  # guarda PNGs por estado en X y sale
 """
+import math
 import sys
 from pathlib import Path
 
@@ -15,7 +16,7 @@ from PyQt6.QtWidgets import QApplication  # noqa: E402
 from dicta.state import State  # noqa: E402
 from dicta.widget import DictaWidget  # noqa: E402
 
-STATES = [State.LOADING, State.IDLE, State.LISTENING, State.TRANSCRIBING, State.ERROR]
+STATES = [State.LOADING, State.IDLE, State.ARMED, State.LISTENING, State.TRANSCRIBING, State.ERROR]
 
 
 def main() -> int:
@@ -59,6 +60,19 @@ def main() -> int:
     timer.start(2000)
     widget.clicked.connect(lambda: print("click"))
     widget.quit_requested.connect(app.quit)
+
+    # nivel simulado para ver las barras vivas en LISTENING
+    level_timer = QTimer()
+    k = 0
+
+    def pump_level() -> None:
+        nonlocal k
+        k += 1
+        widget.set_level(0.05 + 0.15 * (1 + math.sin(k / 2.5)))
+
+    level_timer.timeout.connect(pump_level)
+    level_timer.start(33)
+
     return app.exec()
 
 
