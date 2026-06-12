@@ -146,6 +146,8 @@ class DictaWidget(QWidget):
         """Nivel RMS 0..~0.3 del micrófono; mueve las barras en LISTENING.
         Ataque rápido, caída suave: el pico empuja, el silencio decae.
         En silencio las barras caen a las alturas de CALM (7/12/17/12/7)."""
+        if not math.isfinite(level):
+            return  # un NaN se quedaría pegado en el decay para siempre
         self._level = max(min(level * 3.0, 1.0), self._level * 0.85)
         if self._mode == "bars-live":
             self.update()
