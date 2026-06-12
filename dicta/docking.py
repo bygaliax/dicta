@@ -1,6 +1,7 @@
 """Ancla el widget a la ventana de la terminal: lo pega a la esquina inferior
 derecha y la sigue cuando se mueve o cambia de tamaño. Si la terminal se
 minimiza, el widget se oculta; si no hay terminal a la vista, queda flotando."""
+import win32con
 import win32gui
 
 # Clases de ventana de las terminales habituales en Windows.
@@ -16,6 +17,16 @@ MARGIN_BOTTOM = 76  # por encima de la caja de input de Claude Code
 
 def is_terminal_class(class_name: str) -> bool:
     return class_name in TERMINAL_CLASSES
+
+
+def place_above(widget_hwnd: int, terminal_hwnd: int) -> None:
+    """Coloca el widget justo encima de la terminal en el z-order (sin topmost):
+    si otra app tapa la terminal, tapa también el widget."""
+    prev = win32gui.GetWindow(terminal_hwnd, win32con.GW_HWNDPREV)
+    if prev == widget_hwnd:
+        return
+    flags = win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_NOACTIVATE
+    win32gui.SetWindowPos(widget_hwnd, prev, 0, 0, 0, 0, flags)
 
 
 def dock_position(
@@ -57,6 +68,10 @@ class Docker:
         self.docked = True
         if (x, y) != (self.widget.x(), self.widget.y()):
             self.widget.move(x, y)
+        try:
+            place_above(int(self.widget.winId()), hwnd)
+        except Exception:
+            pass  # la terminal pudo cerrarse entre medias
 
     def recompute_offset(self) -> None:
         """Tras un drag del usuario: el nuevo offset es donde dejó el widget

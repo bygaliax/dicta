@@ -60,6 +60,9 @@ class _FakeWidget:
     def height(self):
         return 72
 
+    def winId(self):
+        return 7
+
 
 class _FakeTracker:
     last_terminal_hwnd = None
@@ -82,3 +85,19 @@ def test_drag_en_curso_pausa_el_anclaje():
     d = Docker(w, tracker)
     d.tick()
     assert w.moves == []
+
+
+def test_dock_coloca_el_widget_sobre_la_terminal(monkeypatch):
+    import dicta.docking as docking
+
+    placed = []
+    monkeypatch.setattr(docking, "place_above", lambda w, t: placed.append((w, t)))
+    monkeypatch.setattr(docking.win32gui, "IsWindow", lambda h: True)
+    monkeypatch.setattr(docking.win32gui, "IsIconic", lambda h: False)
+    monkeypatch.setattr(docking.win32gui, "GetWindowRect", lambda h: (0, 0, 800, 600))
+    w = _FakeWidget()
+    tracker = _FakeTracker()
+    tracker.last_terminal_hwnd = 99
+    d = Docker(w, tracker)
+    d.tick()
+    assert placed == [(7, 99)]
