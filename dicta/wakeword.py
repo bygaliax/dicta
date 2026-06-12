@@ -26,9 +26,11 @@ def ensure_model(models_dir: Path) -> Path:
     zip_path = models_dir / f"{MODEL_NAME}.zip"
     print(f"Descargando modelo de wake word ({MODEL_NAME}, ~39 MB)…")
     urllib.request.urlretrieve(MODEL_URL, zip_path)
-    with zipfile.ZipFile(zip_path) as zf:
-        zf.extractall(models_dir)
-    zip_path.unlink()
+    try:
+        with zipfile.ZipFile(zip_path) as zf:
+            zf.extractall(models_dir)
+    finally:
+        zip_path.unlink(missing_ok=True)  # ni exito ni fallo dejan el zip atras
     if not target.is_dir():
         raise RuntimeError(f"El zip no contenía {MODEL_NAME}")
     print("Modelo de wake word listo.")
