@@ -25,6 +25,7 @@ class Bridge(QObject):
     model_failed = pyqtSignal()
     transcription_done = pyqtSignal(str)
     transcription_failed = pyqtSignal()
+    injection_finished = pyqtSignal(bool)
     hotkey_pressed = pyqtSignal()
 
 
@@ -111,12 +112,25 @@ def main() -> int:
     def on_done(text: str) -> None:
         if not text:
             sounds.play("error", cfg.sonidos)  # silencio/ruido: no pegar nada
-        elif not injector.inject(text, tracker.last_hwnd, cfg.paste_shortcut):
+            sm.transcription_done()
+            return
+        # inject duerme ~0.4s (foco + paste): fuera del hilo de Qt para no congelar la UI
+        target = tracker.last_hwnd
+        threading.Thread(
+            target=lambda: bridge.injection_finished.emit(
+                injector.inject(text, target, cfg.paste_shortcut)
+            ),
+            daemon=True,
+        ).start()
+
+    def on_injection_finished(ok: bool) -> None:
+        if not ok:
             sounds.play("error", cfg.sonidos)  # quedó en el clipboard
             print("No se pudo pegar; la transcripción está en el clipboard.")
         sm.transcription_done()
 
     bridge.transcription_done.connect(on_done)
+    bridge.injection_finished.connect(on_injection_finished)
     bridge.transcription_failed.connect(lambda: (sounds.play("error", cfg.sonidos), sm.fail()))
 
     # --- carga del modelo en background ---
