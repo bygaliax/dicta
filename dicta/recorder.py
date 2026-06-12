@@ -1,37 +1,39 @@
-"""Captura de micrófono a 16 kHz mono float32 (lo que espera Whisper)."""
+"""Graba el dictado tomando chunks del AudioBus (16 kHz mono float32)."""
 import numpy as np
-import sounddevice as sd
 
-SAMPLE_RATE = 16000
+from dicta.audio import AudioBus
 
 
 class Recorder:
-    def __init__(self) -> None:
+    def __init__(self, bus: AudioBus) -> None:
+        self.bus = bus
         self._chunks: list[np.ndarray] = []
-        self._stream: sd.InputStream | None = None
+        self._active = False
 
     def start(self) -> None:
+        """Puede lanzar si el micrófono falla (lo propaga el bus)."""
         self._chunks = []
+        self._active = True
         try:
-            self._stream = sd.InputStream(
-                samplerate=SAMPLE_RATE,
-                channels=1,
-                dtype="float32",
-                callback=lambda indata, frames, t, status: self._chunks.append(indata.copy()),
-            )
-            self._stream.start()
+            self.bus.subscribe(self._on_chunk)
         except Exception:
-            if self._stream is not None:
-                self._stream.close()
-            self._stream = None
+            self._active = False
             raise
 
     def stop(self) -> np.ndarray:
-        if self._stream is not None:
-            self._stream.stop()
-            self._stream.close()
-            self._stream = None
+        self._active = False
+        self.bus.unsubscribe(self._on_chunk)
         chunks, self._chunks = self._chunks, []
         if not chunks:
             return np.zeros(0, dtype="float32")
-        return np.concatenate(chunks).flatten()
+        return np.concatenate(chunks)
+
+    def discard(self) -> None:
+        """Aborta sin devolver audio (timeout del manos libres)."""
+        self._active = False
+        self.bus.unsubscribe(self._on_chunk)
+        self._chunks = []
+
+    def _on_chunk(self, chunk: np.ndarray) -> None:
+        if self._active:
+            self._chunks.append(chunk)

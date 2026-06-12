@@ -74,3 +74,36 @@ def test_suscribir_dos_veces_no_duplica(bus):
     bus.subscribe(got.append)
     FakeStream.instances[0].feed()
     assert len(got) == 1
+
+
+def test_recorder_graba_entre_start_y_stop(bus):
+    from dicta.recorder import Recorder
+
+    rec = Recorder(bus)
+    rec.start()
+    FakeStream.instances[0].feed()
+    FakeStream.instances[0].feed()
+    out = rec.stop()
+    assert out.shape == (320,)
+    assert FakeStream.instances[0].closed  # ya no queda nadie suscrito
+
+
+def test_recorder_stop_sin_audio_devuelve_vacio(bus):
+    from dicta.recorder import Recorder
+
+    rec = Recorder(bus)
+    rec.start()
+    out = rec.stop()
+    assert out.shape == (0,)
+
+
+def test_recorder_discard_tira_el_audio(bus):
+    from dicta.recorder import Recorder
+
+    rec = Recorder(bus)
+    rec.start()
+    FakeStream.instances[0].feed()
+    rec.discard()
+    rec.start()
+    out = rec.stop()
+    assert out.shape == (0,)
