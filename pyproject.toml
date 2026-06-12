@@ -1,7 +1,7 @@
 [project]
 name = "dicta"
 version = "0.1.0"
-description = "Dictado por voz local (Whisper) para Claude Code en Windows"
+description = "Dictado por voz local (Whisper) para Claude Code (Windows y macOS)"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 dependencies = [
@@ -9,9 +9,13 @@ dependencies = [
     "faster-whisper>=1.1",
     "sounddevice>=0.4.6",
     "numpy",
-    "pywin32>=306",
-    "keyboard>=0.13",
     "vosk>=0.3.45",
+    # Windows: ventanas/clipboard/teclado y hotkey global
+    "pywin32>=306; sys_platform == 'win32'",
+    "keyboard>=0.13; sys_platform == 'win32'",
+    # macOS: app frontal (AppKit) + envío de Cmd+V (pynput)
+    "pyobjc-framework-Cocoa>=10; sys_platform == 'darwin'",
+    "pynput>=1.7; sys_platform == 'darwin'",
 ]
 
 [project.optional-dependencies]

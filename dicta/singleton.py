@@ -1,5 +1,6 @@
 """Instancia única (mutex de Windows) + pidfile + contador de sesiones de los hooks."""
 import os
+import sys
 from pathlib import Path
 
 from dicta.config import APP_DIR
@@ -28,12 +29,25 @@ def write_pid(path: Path = PID_FILE) -> None:
     path.write_text(str(os.getpid()))
 
 
-def already_running() -> bool:
+def already_running(path: Path = PID_FILE) -> bool:
     global _mutex_handle
-    import win32api
-    import win32event
-    import winerror
+    if sys.platform == "win32":
+        import win32api
+        import win32event
+        import winerror
 
-    # "Global\\": una sola instancia por máquina (cubre RDP/runas); suficiente para desktop single-user.
-    _mutex_handle = win32event.CreateMutex(None, False, "Global\\dicta_singleton")
-    return win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS
+        _mutex_handle = win32event.CreateMutex(None, False, "Global\\dicta_singleton")
+        return win32api.GetLastError() == winerror.ERROR_ALREADY_EXISTS
+
+    # POSIX (macOS/Linux): pidfile + comprobación de proceso vivo.
+    try:
+        pid = int(path.read_text().strip())
+    except (OSError, ValueError):
+        return False
+    if pid == os.getpid():
+        return False
+    try:
+        os.kill(pid, 0)  # señal 0 = solo comprueba existencia
+        return True
+    except OSError:
+        return False  # pidfile huérfano (proceso muerto)

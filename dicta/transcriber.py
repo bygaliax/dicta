@@ -37,13 +37,18 @@ class Transcriber:
 
         self.language = language
         self.initial_prompt = build_initial_prompt(vocabulario)
-        try:
-            self.model = WhisperModel(model, device="cuda", compute_type="float16")
-            self.device = "cuda"
-        except Exception as exc:
-            print(f"CUDA no disponible ({exc}); usando CPU int8.", file=sys.stderr)
+        if sys.platform == "darwin":
+            # faster-whisper no soporta Metal/MPS: en Mac va por CPU (int8).
             self.model = WhisperModel(model, device="cpu", compute_type="int8")
             self.device = "cpu"
+        else:
+            try:
+                self.model = WhisperModel(model, device="cuda", compute_type="float16")
+                self.device = "cuda"
+            except Exception as exc:
+                print(f"CUDA no disponible ({exc}); usando CPU int8.", file=sys.stderr)
+                self.model = WhisperModel(model, device="cpu", compute_type="int8")
+                self.device = "cpu"
 
     def transcribe(self, audio: np.ndarray) -> str:
         segments, _info = self.model.transcribe(

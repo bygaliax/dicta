@@ -6,7 +6,15 @@ import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
-APP_DIR = Path(os.environ.get("APPDATA", str(Path.home()))) / "dicta"
+def _app_dir() -> Path:
+    if sys.platform == "win32":
+        return Path(os.environ.get("APPDATA", str(Path.home()))) / "dicta"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "dicta"
+    return Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "dicta"
+
+
+APP_DIR = _app_dir()
 
 
 @dataclass
@@ -15,7 +23,7 @@ class Config:
     language: str = "es"
     vocabulario: list[str] = field(default_factory=list)
     sonidos: bool = True
-    paste_shortcut: str = "ctrl+v"
+    paste_shortcut: str = "cmd+v" if sys.platform == "darwin" else "ctrl+v"
     hotkey_enabled: bool = False
     hotkey_combo: str = "ctrl+alt+v"
     manos_libres_activado: bool = True
