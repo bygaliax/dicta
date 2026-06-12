@@ -1,6 +1,27 @@
 """Whisper local vía faster-whisper. CUDA float16; fallback a CPU int8."""
+import os
 import sys
+import sysconfig
+from pathlib import Path
+
 import numpy as np
+
+
+def find_cuda_dll_dirs(nvidia_dir: Path) -> list[Path]:
+    """Carpetas */bin de las wheels de NVIDIA (cublas, cudnn…) bajo site-packages/nvidia."""
+    if not nvidia_dir.is_dir():
+        return []
+    return sorted(d for d in nvidia_dir.glob("*/bin") if d.is_dir())
+
+
+def _register_cuda_dlls() -> None:
+    """CTranslate2 en Windows no encuentra cublas/cudnn solo: añadirlas a la búsqueda de DLLs."""
+    if sys.platform != "win32":
+        return
+    nvidia_dir = Path(sysconfig.get_paths()["purelib"]) / "nvidia"
+    for bin_dir in find_cuda_dll_dirs(nvidia_dir):
+        os.add_dll_directory(str(bin_dir))
+        os.environ["PATH"] = str(bin_dir) + os.pathsep + os.environ.get("PATH", "")
 
 
 def build_initial_prompt(vocabulario: list[str]) -> str | None:
@@ -11,6 +32,7 @@ def build_initial_prompt(vocabulario: list[str]) -> str | None:
 
 class Transcriber:
     def __init__(self, model: str, language: str, vocabulario: list[str]) -> None:
+        _register_cuda_dlls()
         from faster_whisper import WhisperModel  # import perezoso: tarda y pesa
 
         self.language = language

@@ -20,7 +20,7 @@ if (Test-Path $pidFile) {
 
 if (-not $running) {
     # AJUSTAR: ruta real del repo dicta en el desktop
-    $repo = "C:\proyectos\dicta"
+    $repo = "X:\Proyectos\dicta"
     $pythonw = Join-Path $repo ".venv\Scripts\pythonw.exe"
     Start-Process -WindowStyle Hidden $pythonw -ArgumentList "-m", "dicta" -WorkingDirectory $repo
 }

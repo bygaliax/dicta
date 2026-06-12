@@ -24,9 +24,8 @@ python -m venv .venv
 .venv\Scripts\pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
 ```
 
-Si al arrancar ves errores de `cublas64_*.dll` o `cudnn_*.dll`, añade al PATH las
-carpetas `Lib\site-packages\nvidia\cublas\bin` y `...\cudnn\bin` del venv (o copia
-esas DLLs junto a `ctranslate2`). Es un problema conocido de faster-whisper en Windows.
+dicta registra automáticamente esas DLLs al arrancar (busca las carpetas
+`Lib\site-packages\nvidia\*\bin` del venv), así que no hace falta tocar el PATH.
 
 ## Uso manual
 
