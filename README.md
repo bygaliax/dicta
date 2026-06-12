@@ -41,7 +41,17 @@ oculta con ella; sin terminal a la vista, flota donde estaba.
 
 - **Click** — empezar/terminar dictado. El texto se pega en la ventana que estaba activa.
 - **Click derecho → Salir** — cerrar.
-- dicta **nunca pulsa Enter por ti**: revisas y envías tú.
+- dicta **nunca pulsa Enter por ti** en el modo click: revisas y envías tú (el modo manos libres sí lo hace, ver abajo).
+
+## Manos libres ("Claude")
+
+Con `[manos_libres] activado = true` (default), dicta escucha en local la palabra
+**"Claude"** (Vosk, modelo pequeño en español, sin nube ni cuentas). Di "Claude",
+habla, y al callarte ~2 s dicta transcribe, pega el texto en la terminal y lo envía
+con Enter automático (`auto_enviar = false` para desactivar el Enter). El dictado
+por click sigue igual: pega sin enviar, tú revisas. Click derecho en el botón →
+"Manos libres" para apagarlo/encenderlo al vuelo. Riesgo conocido: hablar mucho
+cerca del micro puede disparar falsos positivos; apágalo en llamadas si molesta.
 
 ## Integración con Claude Code (recomendado)
 
@@ -52,7 +62,8 @@ Ver [`hooks/README.md`](hooks/README.md).
 
 `%APPDATA%\dicta\config.toml` (se crea solo la primera vez). Ajusta el modelo,
 el idioma y sobre todo el `vocabulario`: los términos técnicos que uses a diario
-mejoran mucho la transcripción de spanglish.
+mejoran mucho la transcripción de spanglish. La sección `[manos_libres]` controla
+el modo wake word (Vosk, ~39 MB, se descarga la primera vez que se activa).
 
 ## Licencia
 
