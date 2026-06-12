@@ -43,6 +43,7 @@ class StateMachine:
         return State.ARMED if self.handsfree_enabled else State.IDLE
 
     def model_ready(self) -> None:
+        """Solo válido desde LOADING (se llama una vez al arrancar)."""
         if self.state is State.LOADING:
             self._set(self._resting())
 
@@ -70,8 +71,8 @@ class StateMachine:
             self._dispatch(self.on_stop_listening)
 
     def cancel(self) -> None:
-        """Aborta el dictado sin transcribir (timeout sin voz)."""
-        if self.state is State.LISTENING:
+        """Aborta el dictado sin transcribir (timeout sin voz, solo manos libres)."""
+        if self.state is State.LISTENING and self.session_handsfree:
             self._set(self._resting())
             self._dispatch(self.on_cancel_listening)
 
@@ -86,4 +87,5 @@ class StateMachine:
 
     def fail(self) -> None:
         if self.state is not State.ERROR:
+            self.session_handsfree = False
             self._set(State.ERROR)

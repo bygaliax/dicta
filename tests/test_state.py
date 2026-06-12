@@ -142,3 +142,20 @@ def test_error_se_recupera_a_armed_con_click():
     sm.fail()
     sm.click()
     assert sm.state is State.ARMED
+
+
+def test_cancel_ignorado_en_sesion_manual():
+    sm, events = make_sm_ml()
+    sm.model_ready()
+    sm.click()   # sesión manual
+    sm.cancel()  # solo aplica a manos libres: no-op
+    assert sm.state is State.LISTENING
+    assert "CANCEL_REC" not in events
+
+
+def test_fail_resetea_session_handsfree():
+    sm, _ = make_sm_ml()
+    sm.model_ready()
+    sm.wake_detected()
+    sm.fail()
+    assert sm.session_handsfree is False
