@@ -67,3 +67,27 @@ def test_toml_corrupto_usa_defaults(tmp_path: Path):
     p.write_text("esto no es toml [[[", encoding="utf-8")
     cfg = load_config(p)
     assert cfg.model == "large-v3"
+
+
+def test_manos_libres_defaults_sin_seccion(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text("[ui]\nsonidos = true\n", encoding="utf-8")
+    cfg = load_config(p)
+    assert cfg.manos_libres_activado is True
+    assert cfg.wake_word == "claude"
+    assert cfg.silencio_segundos == 2.0
+    assert cfg.auto_enviar is True
+
+
+def test_manos_libres_personalizado(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text(
+        '[manos_libres]\nactivado = false\npalabra = "Compu"\n'
+        "silencio_segundos = 1.5\nauto_enviar = false\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(p)
+    assert cfg.manos_libres_activado is False
+    assert cfg.wake_word == "compu"  # normalizada a minúsculas
+    assert cfg.silencio_segundos == 1.5
+    assert cfg.auto_enviar is False
