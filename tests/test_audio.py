@@ -12,13 +12,16 @@ class FakeStream:
         self.callback = callback
         self.started = False
         self.closed = False
+        self.active = False
         FakeStream.instances.append(self)
 
     def start(self):
         self.started = True
+        self.active = True
 
     def stop(self):
         self.started = False
+        self.active = False
 
     def close(self):
         self.closed = True
@@ -107,3 +110,15 @@ def test_recorder_discard_tira_el_audio(bus):
     rec.start()
     out = rec.stop()
     assert out.shape == (0,)
+
+
+def test_stream_muerto_se_reabre_al_suscribir(bus):
+    primero = lambda c: None
+    bus.subscribe(primero)
+    FakeStream.instances[0].active = False  # el micro se desconectó en vuelo
+
+    segundo = lambda c: None
+    bus.subscribe(segundo)
+    assert len(FakeStream.instances) == 2   # stream nuevo abierto
+    assert FakeStream.instances[0].closed   # el muerto se descartó
+    assert FakeStream.instances[1].started

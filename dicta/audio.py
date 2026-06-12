@@ -21,6 +21,13 @@ class AudioBus:
         with self._lock:
             if callback in self._subs:
                 return
+            if self._stream is not None and not self._stream.active:
+                # el stream murió en vuelo (micro desconectado): tirarlo y reabrir
+                stream, self._stream = self._stream, None
+                try:
+                    stream.close()
+                except Exception:
+                    pass
             self._subs.append(callback)
             if self._stream is None:
                 try:
