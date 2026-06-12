@@ -1,0 +1,14 @@
+[whisper]
+model = "large-v3"
+language = "es"
+vocabulario = ["Netlify", "Turbopack", "GSAP", "deploy", "commit", "branch", "merge", "Claude Code"]
+
+[ui]
+sonidos = true
+
+[inyeccion]
+paste_shortcut = "ctrl+v"
+
+[hotkey]
+enabled = false
+combo = "ctrl+alt+v"
