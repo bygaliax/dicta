@@ -227,10 +227,19 @@ def main() -> int:
             detector_holder["d"] = WakeWordDetector(
                 model_dir, cfg.wake_word, bridge.wake_detected.emit
             )
+            detector_holder.pop("loading", None)
             bridge.wake_ready.emit()
         except Exception as exc:
             print(f"Wake word no disponible: {exc}", file=sys.stderr)
+            detector_holder.pop("loading", None)
             bridge.wake_failed.emit()
+
+    def launch_wakeword_load() -> None:
+        """Lanza la carga una sola vez aunque el toggle llegue varias veces."""
+        if "d" in detector_holder or "loading" in detector_holder:
+            return
+        detector_holder["loading"] = True
+        threading.Thread(target=load_wakeword, daemon=True).start()
 
     def sync_detector(state: State) -> None:
         """El detector solo procesa en ARMED; suscrito salvo en reposo apagado."""
@@ -258,8 +267,8 @@ def main() -> int:
     bridge.wake_failed.connect(on_wake_failed)
 
     def on_handsfree_toggled(enabled: bool) -> None:
-        if enabled and "d" not in detector_holder:
-            threading.Thread(target=load_wakeword, daemon=True).start()
+        if enabled:
+            launch_wakeword_load()
         if enabled != sm.handsfree_enabled:
             sm.toggle_handsfree()
         widget.set_handsfree(enabled)
@@ -267,7 +276,7 @@ def main() -> int:
     widget.handsfree_toggled.connect(on_handsfree_toggled)
     widget.set_handsfree(cfg.manos_libres_activado)
     if cfg.manos_libres_activado:
-        threading.Thread(target=load_wakeword, daemon=True).start()
+        launch_wakeword_load()
 
     # --- carga del modelo en background ---
     def load_model() -> None:
