@@ -27,6 +27,17 @@ python3 -m venv .venv
 (La primera ejecución descarga el modelo Whisper. `large-v3` ≈ 3 GB y en CPU es
 lento; para Mac recomiendo `model = "small"` o `"medium"` en el config.)
 
+### Manos libres (wake-word "Claude") — necesita Python ≤ 3.12
+El motor de wake-word (`vosk`) **aún no tiene wheels para Python 3.13**. El dictado
+por **click NO lo necesita** y funciona en 3.13. Para usar manos libres, crea el
+venv con Python 3.11/3.12 e instala el extra:
+```bash
+python3.12 -m venv .venv
+.venv/bin/pip install -e ".[handsfree]"
+```
+Si manos libres está activado pero `vosk` no está instalado, dicta lo detecta, lo
+apaga solo y el dictado por click sigue funcionando.
+
 ## Permisos de macOS (IMPORTANTE)
 La primera vez, macOS pedirá / habrá que conceder en **Ajustes → Privacidad y seguridad**:
 - **Micrófono** → para la terminal/Python que ejecuta dicta.

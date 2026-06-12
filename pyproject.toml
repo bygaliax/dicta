@@ -9,7 +9,6 @@ dependencies = [
     "faster-whisper>=1.1",
     "sounddevice>=0.4.6",
     "numpy",
-    "vosk>=0.3.45",
     # Windows: ventanas/clipboard/teclado y hotkey global
     "pywin32>=306; sys_platform == 'win32'",
     "keyboard>=0.13; sys_platform == 'win32'",
@@ -19,6 +18,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Wake-word "Claude" (manos libres). vosk aún no tiene wheels para Python 3.13:
+# para manos libres usa un venv con Python 3.11/3.12. El dictado por click no lo necesita.
+handsfree = ["vosk>=0.3.42"]
 dev = ["pytest"]
 
 [build-system]
