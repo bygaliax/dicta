@@ -91,3 +91,11 @@ def test_manos_libres_personalizado(tmp_path: Path):
     assert cfg.wake_word == "compu"  # normalizada a minúsculas
     assert cfg.silencio_segundos == 1.5
     assert cfg.auto_enviar is False
+
+
+def test_silencio_segundos_entero_se_convierte_a_float(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text("[manos_libres]\nsilencio_segundos = 2\n", encoding="utf-8")
+    cfg = load_config(p)
+    assert cfg.silencio_segundos == 2.0
+    assert isinstance(cfg.silencio_segundos, float)
