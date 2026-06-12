@@ -43,11 +43,17 @@ def _send_shortcut(combo: str) -> None:
         win32api.keybd_event(k, 0, win32con.KEYEVENTF_KEYUP, 0)
 
 
-def inject(text: str, target_hwnd: int | None, paste_shortcut: str = "ctrl+v") -> bool:
+def inject(
+    text: str,
+    target_hwnd: int | None,
+    paste_shortcut: str = "ctrl+v",
+    send_enter: bool = False,
+) -> bool:
     """Devuelve False si no pudo pegar (si fue posible, el texto queda en el clipboard).
 
     Nunca lanza: el clipboard puede estar bloqueado por otra app (OpenClipboard
     falla con access denied) y eso no debe tumbar el slot de Qt que nos llama.
+    Con send_enter=True manda Enter tras pegar (envío directo, solo manos libres).
     """
     try:
         previous = _get_clipboard_text()
@@ -58,6 +64,10 @@ def inject(text: str, target_hwnd: int | None, paste_shortcut: str = "ctrl+v") -
         time.sleep(0.1)  # dar tiempo al cambio de foco
         _send_shortcut(paste_shortcut)
         time.sleep(0.3)  # dar tiempo al paste antes de restaurar el clipboard
+        if send_enter:
+            win32api.keybd_event(win32con.VK_RETURN, 0, 0, 0)
+            win32api.keybd_event(win32con.VK_RETURN, 0, win32con.KEYEVENTF_KEYUP, 0)
+            time.sleep(0.08)
         if previous is not None:
             try:
                 _set_clipboard_text(previous)
