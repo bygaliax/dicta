@@ -1,6 +1,7 @@
 """Configuración: %APPDATA%\\dicta\\config.toml, creado desde config.example.toml."""
 import os
 import shutil
+import sys
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -23,20 +24,25 @@ def load_config(path: Path | None = None) -> Config:
     path = path or APP_DIR / "config.toml"
     if not path.exists():
         return Config()
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except tomllib.TOMLDecodeError as exc:
+        print(f"config.toml inválido ({exc}); usando defaults.", file=sys.stderr)
+        return Config()
+
+    cfg = Config()
     w = data.get("whisper", {})
     ui = data.get("ui", {})
     iny = data.get("inyeccion", {})
     hk = data.get("hotkey", {})
-    return Config(
-        model=w.get("model", "large-v3"),
-        language=w.get("language", "es"),
-        vocabulario=list(w.get("vocabulario", [])),
-        sonidos=bool(ui.get("sonidos", True)),
-        paste_shortcut=iny.get("paste_shortcut", "ctrl+v"),
-        hotkey_enabled=bool(hk.get("enabled", False)),
-        hotkey_combo=hk.get("combo", "ctrl+alt+v"),
-    )
+    cfg.model = w.get("model", cfg.model)
+    cfg.language = w.get("language", cfg.language)
+    cfg.vocabulario = list(w.get("vocabulario", cfg.vocabulario))
+    cfg.sonidos = bool(ui.get("sonidos", cfg.sonidos))
+    cfg.paste_shortcut = iny.get("paste_shortcut", cfg.paste_shortcut)
+    cfg.hotkey_enabled = bool(hk.get("enabled", cfg.hotkey_enabled))
+    cfg.hotkey_combo = hk.get("combo", cfg.hotkey_combo)
+    return cfg
 
 
 def ensure_config(example: Path, path: Path | None = None) -> Path:

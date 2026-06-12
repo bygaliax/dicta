@@ -60,3 +60,10 @@ def test_ensure_config_copia_ejemplo_una_vez(tmp_path: Path):
     target.write_text('[whisper]\nmodel = "editado"\n', encoding="utf-8")
     ensure_config(example, target)  # no debe sobrescribir
     assert load_config(target).model == "editado"
+
+
+def test_toml_corrupto_usa_defaults(tmp_path: Path):
+    p = tmp_path / "config.toml"
+    p.write_text("esto no es toml [[[", encoding="utf-8")
+    cfg = load_config(p)
+    assert cfg.model == "large-v3"
