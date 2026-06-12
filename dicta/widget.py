@@ -61,9 +61,10 @@ class DictaWidget(QWidget):
     def mouseMoveEvent(self, e) -> None:
         if self._drag_offset is not None:
             new_pos = e.globalPosition().toPoint() - self._drag_offset
-            if (new_pos - self.pos()).manhattanLength() > 3:
+            # Umbral solo para iniciar el drag; ya iniciado, mover siempre (drags lentos suaves).
+            if self._moved or (new_pos - self.pos()).manhattanLength() > 3:
                 self._moved = True
-            self.move(new_pos)
+                self.move(new_pos)
 
     def mouseReleaseEvent(self, e) -> None:
         if e.button() == Qt.MouseButton.LeftButton:
