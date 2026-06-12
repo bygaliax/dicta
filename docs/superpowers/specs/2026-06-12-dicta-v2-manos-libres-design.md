@@ -141,5 +141,5 @@ Defaults aplicados si la sección no existe (compatibilidad con configs v1). Dep
 ## Riesgos conocidos
 
 1. **CPU del Vosk siempre activo** mientras está armado (~fracción de un core). Aceptado; el toggle permite apagarlo.
-2. **Cápsula cerca del borde de pantalla:** la expansión hacia la izquierda se recorta si el ancla está pegada al borde izquierdo (caso raro: terminal de <140 px). Se clampa a pantalla.
+2. **Cápsula cerca del borde de pantalla:** la expansión hacia la izquierda se recorta si el ancla está pegada al borde izquierdo (caso raro: terminal de <140 px). No se clampa (un clamp a x>=0 rompería multi-monitor); limitación conocida y aceptada.
 3. **Pronunciación de "Claude"** (klod/klaud) con el modelo es: validar en checklist manual; si falla, la palabra es configurable (p. ej. "oye claude" no — una sola palabra, p. ej. "clode" fonético).

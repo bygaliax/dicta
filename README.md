@@ -2,7 +2,7 @@
 
 Dictado por voz **100% local** para [Claude Code](https://claude.com/claude-code) en Windows.
 
-Abres Claude Code → aparece un botón flotante con el spark de Claude pegado a tu
+Abres Claude Code → aparece un botón flotante con barras de ecualizador que se estira en cápsula al escuchar pegado a tu
 terminal → click → hablas → click → tu voz aparece escrita en el prompt. Whisper
 corre en tu GPU; nada sale a internet.
 
