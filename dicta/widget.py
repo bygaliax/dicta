@@ -5,6 +5,7 @@ vive en state.py. La ventana tiene tamaño FIJO (140x72) y la forma pintada
 se ancla al borde derecho: así el dock no se mueve al expandirse. Ya no es
 always-on-top: el Docker la coloca sobre la terminal en el z-order."""
 import math
+import sys
 
 from PyQt6.QtCore import (
     QEasingCurve, QPoint, QPointF, QRectF, Qt, QVariantAnimation, pyqtSignal,
@@ -74,9 +75,18 @@ class DictaWidget(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowFlags(
-            Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool
-        )
+        # Windows: Tool (el Docker maneja el z-order sobre la terminal).
+        # macOS: Tool oculta el widget cuando la app no está al frente, así que se
+        # usa StaysOnTop + no-toma-foco para que flote visible sin robar el foco.
+        if sys.platform == "darwin":
+            flags = (
+                Qt.WindowType.FramelessWindowHint
+                | Qt.WindowType.WindowStaysOnTopHint
+                | Qt.WindowType.WindowDoesNotAcceptFocus
+            )
+        else:
+            flags = Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool
+        self.setWindowFlags(flags)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setFixedSize(CANVAS_W, CANVAS_H)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
