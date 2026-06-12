@@ -34,9 +34,12 @@ class AudioBus:
             if callback in self._subs:
                 self._subs.remove(callback)
             if not self._subs and self._stream is not None:
-                self._stream.stop()
-                self._stream.close()
-                self._stream = None
+                stream, self._stream = self._stream, None
+                try:
+                    stream.stop()
+                    stream.close()
+                except Exception:
+                    pass  # dispositivo desconectado: el stream ya está muerto
 
     def _open(self) -> None:
         self._stream = sd.InputStream(
