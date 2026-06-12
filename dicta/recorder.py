@@ -12,19 +12,26 @@ class Recorder:
 
     def start(self) -> None:
         self._chunks = []
-        self._stream = sd.InputStream(
-            samplerate=SAMPLE_RATE,
-            channels=1,
-            dtype="float32",
-            callback=lambda indata, frames, t, status: self._chunks.append(indata.copy()),
-        )
-        self._stream.start()
+        try:
+            self._stream = sd.InputStream(
+                samplerate=SAMPLE_RATE,
+                channels=1,
+                dtype="float32",
+                callback=lambda indata, frames, t, status: self._chunks.append(indata.copy()),
+            )
+            self._stream.start()
+        except Exception:
+            if self._stream is not None:
+                self._stream.close()
+            self._stream = None
+            raise
 
     def stop(self) -> np.ndarray:
         if self._stream is not None:
             self._stream.stop()
             self._stream.close()
             self._stream = None
-        if not self._chunks:
+        chunks, self._chunks = self._chunks, []
+        if not chunks:
             return np.zeros(0, dtype="float32")
-        return np.concatenate(self._chunks).flatten()
+        return np.concatenate(chunks).flatten()
