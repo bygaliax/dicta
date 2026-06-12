@@ -18,6 +18,11 @@ class Config:
     paste_shortcut: str = "ctrl+v"
     hotkey_enabled: bool = False
     hotkey_combo: str = "ctrl+alt+v"
+    manos_libres_activado: bool = True
+    wake_word: str = "claude"
+    wake_confianza: float = 0.85
+    silencio_segundos: float = 2.0
+    auto_enviar: bool = True
 
 
 def load_config(path: Path | None = None) -> Config:
@@ -35,6 +40,7 @@ def load_config(path: Path | None = None) -> Config:
     ui = data.get("ui", {})
     iny = data.get("inyeccion", {})
     hk = data.get("hotkey", {})
+    ml = data.get("manos_libres", {})
     cfg.model = w.get("model", cfg.model)
     cfg.language = w.get("language", cfg.language)
     cfg.vocabulario = list(w.get("vocabulario", cfg.vocabulario))
@@ -42,6 +48,11 @@ def load_config(path: Path | None = None) -> Config:
     cfg.paste_shortcut = iny.get("paste_shortcut", cfg.paste_shortcut)
     cfg.hotkey_enabled = bool(hk.get("enabled", cfg.hotkey_enabled))
     cfg.hotkey_combo = hk.get("combo", cfg.hotkey_combo)
+    cfg.manos_libres_activado = bool(ml.get("activado", cfg.manos_libres_activado))
+    cfg.wake_word = str(ml.get("palabra", cfg.wake_word)).strip().lower()
+    cfg.wake_confianza = float(ml.get("confianza", cfg.wake_confianza))
+    cfg.silencio_segundos = float(ml.get("silencio_segundos", cfg.silencio_segundos))
+    cfg.auto_enviar = bool(ml.get("auto_enviar", cfg.auto_enviar))
     return cfg
 
 

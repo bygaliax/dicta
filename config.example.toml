@@ -12,3 +12,10 @@ paste_shortcut = "ctrl+v"
 [hotkey]
 enabled = false
 combo = "ctrl+alt+v"
+
+[manos_libres]
+activado = true
+palabra = "claude"
+confianza = 0.85          # 0–1: más alto = menos falsos positivos (y más exigente)
+silencio_segundos = 2.0
+auto_enviar = true

@@ -1,20 +1,26 @@
-"""Orquestador: une widget, estados, grabadora, transcriptor e inyector."""
+"""Orquestador: une widget, estados, bus de audio, wake word, grabadora,
+transcriptor e inyector."""
 import json
 import sys
 import threading
 from pathlib import Path
 
+import numpy as np
 from PyQt6.QtCore import QObject, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QApplication
 
 from dicta import injector, singleton, sounds
+from dicta.audio import AudioBus
 from dicta.config import APP_DIR, Config, ensure_config, load_config
+from dicta.docking import Docker
 from dicta.focus_tracker import FocusTracker
 from dicta.recorder import Recorder
-from dicta.state import StateMachine
+from dicta.silence import SilenceDetector
+from dicta.state import State, StateMachine
 from dicta.widget import DictaWidget
 
 STATE_FILE = APP_DIR / "state.json"
+MODELS_DIR = APP_DIR / "models"
 EXAMPLE_CONFIG = Path(__file__).parent.parent / "config.example.toml"
 
 
@@ -27,19 +33,32 @@ class Bridge(QObject):
     transcription_failed = pyqtSignal()
     injection_finished = pyqtSignal(bool)
     hotkey_pressed = pyqtSignal()
+    wake_detected = pyqtSignal()
+    wake_ready = pyqtSignal()
+    wake_failed = pyqtSignal()
+    silence_event = pyqtSignal(str)  # "silence" | "timeout"
+    mic_level = pyqtSignal(float)
 
 
-def load_position() -> tuple[int, int] | None:
+def load_ui_state() -> dict:
     try:
-        d = json.loads(STATE_FILE.read_text())
-        return int(d["x"]), int(d["y"])
+        return json.loads(STATE_FILE.read_text())
     except Exception:
-        return None
+        return {}
 
 
-def save_position(x: int, y: int) -> None:
+def save_ui_state(widget, docker: Docker) -> None:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps({"x": x, "y": y}))
+    STATE_FILE.write_text(
+        json.dumps(
+            {
+                "x": widget.x(),
+                "y": widget.y(),
+                "dx": docker.offset[0],
+                "dy": docker.offset[1],
+            }
+        )
+    )
 
 
 def main() -> int:
@@ -53,25 +72,36 @@ def main() -> int:
 
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
-    sm = StateMachine()
+    sm = StateMachine(handsfree_enabled=cfg.manos_libres_activado)
     widget = DictaWidget()
-    recorder = Recorder()
+    bus = AudioBus()
+    recorder = Recorder(bus)
     bridge = Bridge()
-    holder: dict = {}  # {"t": Transcriber} cuando cargue
+    holder: dict = {}           # {"t": Transcriber} cuando cargue
+    detector_holder: dict = {}  # {"d": WakeWordDetector} cuando cargue
+    silence_holder: dict = {}   # {"s": SilenceDetector, "cb": callback} por sesión
 
-    # Posición: persistida, o esquina inferior derecha por defecto
-    pos = load_position()
-    if pos:
-        widget.move(*pos)
+    # Posición inicial: persistida, o esquina inferior derecha por defecto.
+    ui_state = load_ui_state()
+    if "x" in ui_state and "y" in ui_state:
+        widget.move(int(ui_state["x"]), int(ui_state["y"]))
     else:
         geo = app.primaryScreen().availableGeometry()
-        widget.move(geo.right() - 80, geo.bottom() - 80)
+        widget.move(geo.right() - widget.width() - 16, geo.bottom() - widget.height() - 16)
     widget.show()
 
     tracker = FocusTracker(int(widget.winId()))
     poll_timer = QTimer()
     poll_timer.timeout.connect(tracker.poll)
     poll_timer.start(500)
+
+    docker = Docker(
+        widget, tracker, (int(ui_state.get("dx", 0)), int(ui_state.get("dy", 0)))
+    )
+    dock_timer = QTimer()
+    dock_timer.timeout.connect(docker.tick)
+    dock_timer.start(80)
+    widget.drag_finished.connect(docker.recompute_offset)
 
     # --- cableado de estados y UI ---
     sm.on_change.append(widget.set_state)
@@ -80,6 +110,16 @@ def main() -> int:
     bridge.model_ready.connect(sm.model_ready)
     bridge.model_failed.connect(sm.fail)
     bridge.hotkey_pressed.connect(sm.click)
+    bridge.wake_detected.connect(sm.wake_detected)
+    bridge.mic_level.connect(widget.set_level)
+
+    # --- nivel del micrófono -> barras (solo mientras se escucha) ---
+    level_counter = {"n": 0}
+
+    def on_chunk_level(chunk: np.ndarray) -> None:
+        level_counter["n"] += 1
+        if level_counter["n"] % 3 == 0:  # ~30 fps con chunks de ~10 ms
+            bridge.mic_level.emit(float(np.sqrt(np.mean(chunk**2))))
 
     # --- grabación ---
     def start_recording() -> None:
@@ -91,18 +131,39 @@ def main() -> int:
         sounds.play("start", cfg.sonidos)
         try:
             recorder.start()
+            bus.subscribe(on_chunk_level)
         except Exception as exc:
             print(f"Error de micrófono: {exc}", file=sys.stderr)
             sounds.play("error", cfg.sonidos)
             sm.fail()
+            return
+        if sm.session_handsfree:
+            det = SilenceDetector(cfg.silencio_segundos)
+            silence_holder["s"] = det
+
+            def feed_silence(chunk: np.ndarray, _det=det) -> None:
+                event = _det.feed(chunk)
+                if event:
+                    bridge.silence_event.emit(event)
+
+            silence_holder["cb"] = feed_silence
+            bus.subscribe(feed_silence)
+
+    def cleanup_listening() -> None:
+        bus.unsubscribe(on_chunk_level)
+        cb = silence_holder.pop("cb", None)
+        if cb is not None:
+            bus.unsubscribe(cb)
+        silence_holder.pop("s", None)
 
     def stop_and_transcribe() -> None:
         sounds.play("stop", cfg.sonidos)
-        audio = recorder.stop()
+        cleanup_listening()
+        audio_data = recorder.stop()
 
         def work() -> None:
             try:
-                text = holder["t"].transcribe(audio)
+                text = holder["t"].transcribe(audio_data)
                 bridge.transcription_done.emit(text)
             except Exception as exc:
                 print(f"Error transcribiendo: {exc}", file=sys.stderr)
@@ -110,8 +171,22 @@ def main() -> int:
 
         threading.Thread(target=work, daemon=True).start()
 
+    def cancel_listening() -> None:
+        cleanup_listening()
+        recorder.discard()
+        sounds.play("error", cfg.sonidos)
+
     sm.on_start_listening.append(start_recording)
     sm.on_stop_listening.append(stop_and_transcribe)
+    sm.on_cancel_listening.append(cancel_listening)
+
+    def on_silence_event(event: str) -> None:
+        if event == "silence":
+            sm.silence_detected()
+        else:  # "timeout": nunca hubo voz
+            sm.cancel()
+
+    bridge.silence_event.connect(on_silence_event)
 
     # --- resultado de la transcripción ---
     def on_done(text: str) -> None:
@@ -119,11 +194,14 @@ def main() -> int:
             sounds.play("error", cfg.sonidos)  # silencio/ruido: no pegar nada
             sm.transcription_done()
             return
-        # inject duerme ~0.4s (foco + paste): fuera del hilo de Qt para no congelar la UI
-        target = tracker.last_hwnd
+        # En manos libres el destino es SIEMPRE la terminal (un Enter automático
+        # en otra app sería peligroso); en manual, la última ventana activa.
+        handsfree = sm.session_handsfree
+        target = tracker.last_terminal_hwnd if handsfree else tracker.last_hwnd
+        send_enter = handsfree and cfg.auto_enviar
         threading.Thread(
             target=lambda: bridge.injection_finished.emit(
-                injector.inject(text, target, cfg.paste_shortcut)
+                injector.inject(text, target, cfg.paste_shortcut, send_enter)
             ),
             daemon=True,
         ).start()
@@ -136,7 +214,70 @@ def main() -> int:
 
     bridge.transcription_done.connect(on_done)
     bridge.injection_finished.connect(on_injection_finished)
-    bridge.transcription_failed.connect(lambda: (sounds.play("error", cfg.sonidos), sm.fail()))
+    bridge.transcription_failed.connect(
+        lambda: (sounds.play("error", cfg.sonidos), sm.fail())
+    )
+
+    # --- wake word ---
+    def load_wakeword() -> None:
+        try:
+            from dicta.wakeword import WakeWordDetector, ensure_model
+
+            model_dir = ensure_model(MODELS_DIR)
+            detector_holder["d"] = WakeWordDetector(
+                model_dir, cfg.wake_word, bridge.wake_detected.emit,
+                min_conf=cfg.wake_confianza,
+            )
+            detector_holder.pop("loading", None)
+            bridge.wake_ready.emit()
+        except Exception as exc:
+            print(f"Wake word no disponible: {exc}", file=sys.stderr)
+            detector_holder.pop("loading", None)
+            bridge.wake_failed.emit()
+
+    def launch_wakeword_load() -> None:
+        """Lanza la carga una sola vez aunque el toggle llegue varias veces."""
+        if "d" in detector_holder or "loading" in detector_holder:
+            return
+        detector_holder["loading"] = True
+        threading.Thread(target=load_wakeword, daemon=True).start()
+
+    def sync_detector(state: State) -> None:
+        """El detector solo procesa en ARMED; suscrito salvo en reposo apagado."""
+        det = detector_holder.get("d")
+        if det is None:
+            return
+        det.set_armed(state is State.ARMED)
+        if state is State.ARMED:
+            try:
+                bus.subscribe(det.feed)
+            except Exception as exc:
+                print(f"Error de micrófono: {exc}", file=sys.stderr)
+                sm.fail()
+        elif state in (State.IDLE, State.ERROR):
+            bus.unsubscribe(det.feed)
+
+    sm.on_change.append(sync_detector)
+    bridge.wake_ready.connect(lambda: sync_detector(sm.state))
+
+    def on_wake_failed() -> None:
+        if sm.handsfree_enabled:
+            sm.toggle_handsfree()  # manos libres OFF; el flujo manual sigue
+        widget.set_handsfree(False)
+
+    bridge.wake_failed.connect(on_wake_failed)
+
+    def on_handsfree_toggled(enabled: bool) -> None:
+        if enabled:
+            launch_wakeword_load()
+        if enabled != sm.handsfree_enabled:
+            sm.toggle_handsfree()
+        widget.set_handsfree(enabled)
+
+    widget.handsfree_toggled.connect(on_handsfree_toggled)
+    widget.set_handsfree(cfg.manos_libres_activado)
+    if cfg.manos_libres_activado:
+        launch_wakeword_load()
 
     # --- carga del modelo en background ---
     def load_model() -> None:
@@ -166,5 +307,5 @@ def main() -> int:
     )
     exit_timer.start(2000)
 
-    app.aboutToQuit.connect(lambda: save_position(widget.x(), widget.y()))
+    app.aboutToQuit.connect(lambda: save_ui_state(widget, docker))
     return app.exec()
