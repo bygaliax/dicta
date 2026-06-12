@@ -1,4 +1,5 @@
 """Whisper local vía faster-whisper. CUDA float16; fallback a CPU int8."""
+import sys
 import numpy as np
 
 
@@ -17,7 +18,8 @@ class Transcriber:
         try:
             self.model = WhisperModel(model, device="cuda", compute_type="float16")
             self.device = "cuda"
-        except Exception:
+        except Exception as exc:
+            print(f"CUDA no disponible ({exc}); usando CPU int8.", file=sys.stderr)
             self.model = WhisperModel(model, device="cpu", compute_type="int8")
             self.device = "cpu"
 
