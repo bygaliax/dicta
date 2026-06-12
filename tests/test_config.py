@@ -75,6 +75,7 @@ def test_manos_libres_defaults_sin_seccion(tmp_path: Path):
     cfg = load_config(p)
     assert cfg.manos_libres_activado is True
     assert cfg.wake_word == "claude"
+    assert cfg.wake_confianza == 0.85
     assert cfg.silencio_segundos == 2.0
     assert cfg.auto_enviar is True
 
@@ -82,13 +83,14 @@ def test_manos_libres_defaults_sin_seccion(tmp_path: Path):
 def test_manos_libres_personalizado(tmp_path: Path):
     p = tmp_path / "config.toml"
     p.write_text(
-        '[manos_libres]\nactivado = false\npalabra = "Compu"\n'
+        '[manos_libres]\nactivado = false\npalabra = "Compu"\nconfianza = 0.7\n'
         "silencio_segundos = 1.5\nauto_enviar = false\n",
         encoding="utf-8",
     )
     cfg = load_config(p)
     assert cfg.manos_libres_activado is False
     assert cfg.wake_word == "compu"  # normalizada a minúsculas
+    assert cfg.wake_confianza == 0.7
     assert cfg.silencio_segundos == 1.5
     assert cfg.auto_enviar is False
 

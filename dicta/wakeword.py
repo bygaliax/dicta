@@ -15,6 +15,10 @@ MODEL_NAME = "vosk-model-small-es-0.42"
 MODEL_URL = f"https://alphacephei.com/vosk/models/{MODEL_NAME}.zip"
 SAMPLE_RATE = 16000
 DEBOUNCE_S = 1.0
+DEFAULT_CONF = 0.85
+# Señuelos fonéticos: palabras reales cercanas a "claude". Si el decoder tiene
+# adónde mandar lo parecido, deja de forzarlo a la wake word ([unk] sale caro).
+DECOYS = ["claro", "clave", "aplaude", "aplauden", "cuando"]
 
 
 def ensure_model(models_dir: Path) -> Path:
@@ -37,14 +41,19 @@ def ensure_model(models_dir: Path) -> Path:
     return target
 
 
-def heard_word(result_json: str, word: str) -> bool:
-    """True si el JSON de Vosk (parcial o final) contiene la palabra."""
+def heard_word(result_json: str, word: str, min_conf: float) -> bool:
+    """True si el resultado FINAL de Vosk contiene la palabra con conf >= min_conf.
+    Usa el array 'result' (requiere SetWords(True)); sin él, respaldo por texto."""
     try:
         data = json.loads(result_json)
     except json.JSONDecodeError:
         return False
-    text = data.get("partial") or data.get("text") or ""
-    return word in text.split()
+    words = data.get("result")
+    if words:
+        return any(
+            w.get("word") == word and w.get("conf", 0.0) >= min_conf for w in words
+        )
+    return word in (data.get("text") or "").split()
 
 
 class WakeWordDetector:
@@ -58,17 +67,21 @@ class WakeWordDetector:
         on_detect,
         now=time.monotonic,
         recognizer=None,
+        min_conf: float = DEFAULT_CONF,
     ) -> None:
         if recognizer is None:
             from vosk import KaldiRecognizer, Model, SetLogLevel  # import perezoso
 
             SetLogLevel(-1)
+            grammar = [word, *(d for d in DECOYS if d != word), "[unk]"]
             recognizer = KaldiRecognizer(
-                Model(str(model_dir)), SAMPLE_RATE, json.dumps([word, "[unk]"])
+                Model(str(model_dir)), SAMPLE_RATE, json.dumps(grammar)
             )
+            recognizer.SetWords(True)  # conf por palabra en el resultado final
         self.word = word
         self.on_detect = on_detect
         self._now = now
+        self._min_conf = min_conf
         self._recognizer = recognizer
         self._armed = False
         self._last_fire = -1e9
@@ -94,11 +107,13 @@ class WakeWordDetector:
 
     def _process(self, chunk: np.ndarray) -> None:
         pcm = (np.clip(chunk, -1, 1) * 32767).astype("int16").tobytes()
-        if self._recognizer.AcceptWaveform(pcm):
-            result = self._recognizer.Result()
-        else:
-            result = self._recognizer.PartialResult()
-        if heard_word(result, self.word) and self._now() - self._last_fire >= DEBOUNCE_S:
+        if not self._recognizer.AcceptWaveform(pcm):
+            return  # los parciales son hipótesis inestables: solo confirmamos finales
+        result = self._recognizer.Result()
+        if (
+            heard_word(result, self.word, self._min_conf)
+            and self._now() - self._last_fire >= DEBOUNCE_S
+        ):
             self._last_fire = self._now()
             self._recognizer.Reset()
             self.on_detect()

@@ -20,6 +20,7 @@ class Config:
     hotkey_combo: str = "ctrl+alt+v"
     manos_libres_activado: bool = True
     wake_word: str = "claude"
+    wake_confianza: float = 0.85
     silencio_segundos: float = 2.0
     auto_enviar: bool = True
 
@@ -49,6 +50,7 @@ def load_config(path: Path | None = None) -> Config:
     cfg.hotkey_combo = hk.get("combo", cfg.hotkey_combo)
     cfg.manos_libres_activado = bool(ml.get("activado", cfg.manos_libres_activado))
     cfg.wake_word = str(ml.get("palabra", cfg.wake_word)).strip().lower()
+    cfg.wake_confianza = float(ml.get("confianza", cfg.wake_confianza))
     cfg.silencio_segundos = float(ml.get("silencio_segundos", cfg.silencio_segundos))
     cfg.auto_enviar = bool(ml.get("auto_enviar", cfg.auto_enviar))
     return cfg

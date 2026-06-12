@@ -225,7 +225,8 @@ def main() -> int:
 
             model_dir = ensure_model(MODELS_DIR)
             detector_holder["d"] = WakeWordDetector(
-                model_dir, cfg.wake_word, bridge.wake_detected.emit
+                model_dir, cfg.wake_word, bridge.wake_detected.emit,
+                min_conf=cfg.wake_confianza,
             )
             detector_holder.pop("loading", None)
             bridge.wake_ready.emit()

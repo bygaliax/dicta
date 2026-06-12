@@ -50,8 +50,13 @@ Con `[manos_libres] activado = true` (default), dicta escucha en local la palabr
 habla, y al callarte ~2 s dicta transcribe, pega el texto en la terminal y lo envía
 con Enter automático (`auto_enviar = false` para desactivar el Enter). El dictado
 por click sigue igual: pega sin enviar, tú revisas. Click derecho en el botón →
-"Manos libres" para apagarlo/encenderlo al vuelo. Riesgo conocido: hablar mucho
-cerca del micro puede disparar falsos positivos; apágalo en llamadas si molesta.
+"Manos libres" para apagarlo/encenderlo al vuelo.
+
+Para frenar falsos positivos, el detector solo confirma resultados **finales** de
+Vosk (no parciales), exige una **confianza mínima** por palabra (`confianza`, 0.85
+por defecto) y mete señuelos fonéticos en la gramática para que lo parecido a
+"claude" no se fuerce a la wake word. Si aún se cuela ruido, sube `confianza` hacia
+1.0; si te cuesta que te oiga, bájala. En llamadas largas, apágalo si molesta.
 
 ## Integración con Claude Code (recomendado)
 
