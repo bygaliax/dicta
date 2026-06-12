@@ -1,5 +1,6 @@
 """Máquina de estados pura (sin Qt). El widget pinta según on_change;
 la app arranca/para la grabadora según on_start/stop_listening."""
+import sys
 from enum import Enum, auto
 from typing import Callable
 
@@ -21,8 +22,16 @@ class StateMachine:
 
     def _set(self, state: State) -> None:
         self.state = state
-        for cb in self.on_change:
-            cb(state)
+        self._dispatch(self.on_change, state)
+
+    @staticmethod
+    def _dispatch(callbacks: list, *args) -> None:
+        """Un callback que falla no debe impedir los siguientes."""
+        for cb in callbacks:
+            try:
+                cb(*args)
+            except Exception as exc:
+                print(f"Error en callback de estado: {exc}", file=sys.stderr)
 
     def model_ready(self) -> None:
         if self.state is State.LOADING:
@@ -31,12 +40,10 @@ class StateMachine:
     def click(self) -> None:
         if self.state is State.IDLE:
             self._set(State.LISTENING)
-            for cb in self.on_start_listening:
-                cb()
+            self._dispatch(self.on_start_listening)
         elif self.state is State.LISTENING:
             self._set(State.TRANSCRIBING)
-            for cb in self.on_stop_listening:
-                cb()
+            self._dispatch(self.on_stop_listening)
         elif self.state is State.ERROR:
             self._set(State.IDLE)
         # LOADING y TRANSCRIBING ignoran clicks
@@ -46,4 +53,5 @@ class StateMachine:
             self._set(State.IDLE)
 
     def fail(self) -> None:
-        self._set(State.ERROR)
+        if self.state is not State.ERROR:
+            self._set(State.ERROR)
