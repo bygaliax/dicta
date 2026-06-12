@@ -11,7 +11,7 @@ from dicta import injector, singleton, sounds
 from dicta.config import APP_DIR, Config, ensure_config, load_config
 from dicta.focus_tracker import FocusTracker
 from dicta.recorder import Recorder
-from dicta.state import State, StateMachine
+from dicta.state import StateMachine
 from dicta.widget import DictaWidget
 
 STATE_FILE = APP_DIR / "state.json"
@@ -83,6 +83,11 @@ def main() -> int:
 
     # --- grabación ---
     def start_recording() -> None:
+        if "t" not in holder:
+            print("El modelo no está cargado; no se puede dictar.", file=sys.stderr)
+            sounds.play("error", cfg.sonidos)
+            sm.fail()
+            return
         sounds.play("start", cfg.sonidos)
         try:
             recorder.start()
