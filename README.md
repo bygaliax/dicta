@@ -2,8 +2,9 @@
 
 Dictado por voz **100% local** para [Claude Code](https://claude.com/claude-code) en Windows.
 
-Abres Claude Code → aparece un teléfono azul flotante → click → hablas → click →
-tu voz aparece escrita en el prompt. Whisper corre en tu GPU; nada sale a internet.
+Abres Claude Code → aparece un botón flotante con el spark de Claude pegado a tu
+terminal → click → hablas → click → tu voz aparece escrita en el prompt. Whisper
+corre en tu GPU; nada sale a internet.
 
 ## Requisitos
 
@@ -33,8 +34,10 @@ dicta registra automáticamente esas DLLs al arrancar (busca las carpetas
 .venv\Scripts\python -m dicta
 ```
 
-La primera ejecución descarga el modelo (~3 GB para `large-v3`). El widget aparece
-abajo a la derecha; arrástralo donde quieras (la posición se recuerda).
+La primera ejecución descarga el modelo (~3 GB para `large-v3`). El widget se ancla
+a la esquina inferior derecha de tu terminal y la sigue si la mueves; arrástralo
+para ajustar dónde queda (el ajuste se recuerda). Si la terminal se minimiza, se
+oculta con ella; sin terminal a la vista, flota donde estaba.
 
 - **Click** — empezar/terminar dictado. El texto se pega en la ventana que estaba activa.
 - **Click derecho → Salir** — cerrar.

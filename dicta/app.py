@@ -9,6 +9,7 @@ from PyQt6.QtWidgets import QApplication
 
 from dicta import injector, singleton, sounds
 from dicta.config import APP_DIR, Config, ensure_config, load_config
+from dicta.docking import Docker
 from dicta.focus_tracker import FocusTracker
 from dicta.recorder import Recorder
 from dicta.state import StateMachine
@@ -29,17 +30,25 @@ class Bridge(QObject):
     hotkey_pressed = pyqtSignal()
 
 
-def load_position() -> tuple[int, int] | None:
+def load_ui_state() -> dict:
     try:
-        d = json.loads(STATE_FILE.read_text())
-        return int(d["x"]), int(d["y"])
+        return json.loads(STATE_FILE.read_text())
     except Exception:
-        return None
+        return {}
 
 
-def save_position(x: int, y: int) -> None:
+def save_ui_state(widget, docker: Docker) -> None:
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps({"x": x, "y": y}))
+    STATE_FILE.write_text(
+        json.dumps(
+            {
+                "x": widget.x(),
+                "y": widget.y(),
+                "dx": docker.offset[0],
+                "dy": docker.offset[1],
+            }
+        )
+    )
 
 
 def main() -> int:
@@ -59,19 +68,28 @@ def main() -> int:
     bridge = Bridge()
     holder: dict = {}  # {"t": Transcriber} cuando cargue
 
-    # Posición: persistida, o esquina inferior derecha por defecto
-    pos = load_position()
-    if pos:
-        widget.move(*pos)
+    # Posición inicial: persistida, o esquina inferior derecha por defecto.
+    # En cuanto aparece una terminal en primer plano, el Docker lo ancla a ella.
+    ui_state = load_ui_state()
+    if "x" in ui_state and "y" in ui_state:
+        widget.move(int(ui_state["x"]), int(ui_state["y"]))
     else:
         geo = app.primaryScreen().availableGeometry()
-        widget.move(geo.right() - 80, geo.bottom() - 80)
+        widget.move(geo.right() - 88, geo.bottom() - 88)
     widget.show()
 
     tracker = FocusTracker(int(widget.winId()))
     poll_timer = QTimer()
     poll_timer.timeout.connect(tracker.poll)
     poll_timer.start(500)
+
+    docker = Docker(
+        widget, tracker, (int(ui_state.get("dx", 0)), int(ui_state.get("dy", 0)))
+    )
+    dock_timer = QTimer()
+    dock_timer.timeout.connect(docker.tick)
+    dock_timer.start(80)  # rápido para que siga la terminal sin saltos visibles
+    widget.drag_finished.connect(docker.recompute_offset)
 
     # --- cableado de estados y UI ---
     sm.on_change.append(widget.set_state)
@@ -166,5 +184,5 @@ def main() -> int:
     )
     exit_timer.start(2000)
 
-    app.aboutToQuit.connect(lambda: save_position(widget.x(), widget.y()))
+    app.aboutToQuit.connect(lambda: save_ui_state(widget, docker))
     return app.exec()
