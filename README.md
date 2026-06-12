@@ -2,9 +2,13 @@
 
 Dictado por voz **100% local** para [Claude Code](https://claude.com/claude-code) en Windows.
 
-Abres Claude Code → aparece un botón flotante con barras de ecualizador que se estira en cápsula al escuchar pegado a tu
-terminal → click → hablas → click → tu voz aparece escrita en el prompt. Whisper
-corre en tu GPU; nada sale a internet.
+Abres Claude Code → aparece un botón flotante con barras de ecualizador, anclado a
+tu terminal, que se estira en cápsula al escuchar → hablas → tu voz aparece escrita
+en el prompt. Whisper corre en tu GPU; nada sale a internet.
+
+Dos modos: **click** (click para empezar, click para terminar, tú revisas y envías)
+y **manos libres** (dices "Claude", hablas, y al callarte se transcribe y se envía
+solo). Whisper para transcribir, Vosk para la palabra clave — ambos en local.
 
 ## Requisitos
 
@@ -63,12 +67,73 @@ por defecto) y mete señuelos fonéticos en la gramática para que lo parecido a
 Con los hooks, dicta aparece al abrir `claude` y se cierra solo al salir.
 Ver [`hooks/README.md`](hooks/README.md).
 
+## Cómo funciona
+
+dicta abre **un solo** stream de micrófono (16 kHz mono) y lo reparte por un
+**AudioBus** compartido a quien lo necesite, sin pelearse por el dispositivo:
+
+- **Wake word** (Vosk, local): escucha la palabra clave solo en estado `ARMED`.
+- **Recorder**: acumula audio mientras dictas (`LISTENING`).
+- **SilenceDetector** (VAD): en manos libres, corta solo al detectar silencio sostenido.
+- **Whisper** (faster-whisper, GPU): transcribe al terminar (`TRANSCRIBING`).
+- **Injector**: pega el texto en la ventana activa (y pulsa Enter en manos libres).
+
+La máquina de estados encadena el flujo y el widget refleja cada estado:
+
+| Estado | Qué pasa | Widget |
+|---|---|---|
+| `IDLE` | Manos libres apagado; espera click | barras en calma |
+| `ARMED` | Manos libres on; espera la palabra "Claude" | onda suave |
+| `LISTENING` | Grabando tu voz | cápsula viva con nivel del micro |
+| `TRANSCRIBING` | Whisper transcribe | puntos |
+
 ## Configuración
 
-`%APPDATA%\dicta\config.toml` (se crea solo la primera vez). Ajusta el modelo,
-el idioma y sobre todo el `vocabulario`: los términos técnicos que uses a diario
-mejoran mucho la transcripción de spanglish. La sección `[manos_libres]` controla
-el modo wake word (Vosk, ~39 MB, se descarga la primera vez que se activa).
+`%APPDATA%\dicta\config.toml` se crea solo la primera vez (copiado de
+[`config.example.toml`](config.example.toml); nunca se sobrescribe). Si el TOML
+está corrupto, dicta usa los valores por defecto y avisa por stderr.
+
+```toml
+[whisper]
+model = "large-v3"            # large-v3 | medium | small (small si vas por CPU)
+language = "es"
+vocabulario = ["Netlify", "GSAP", "deploy", "commit", "Claude Code"]
+
+[ui]
+sonidos = true               # pitidos de inicio/fin/error
+
+[inyeccion]
+paste_shortcut = "ctrl+v"    # atajo de pegado de tu terminal
+
+[hotkey]
+enabled = false              # atajo global para iniciar/terminar dictado (= click)
+combo = "ctrl+alt+v"
+
+[manos_libres]
+activado = true              # escuchar la wake word en local
+palabra = "claude"           # se normaliza a minúsculas
+confianza = 0.85             # 0–1: más alto = menos falsos positivos (y más exigente)
+silencio_segundos = 2.0      # silencio que cierra el dictado manos libres
+auto_enviar = true           # pulsar Enter tras pegar (solo manos libres)
+```
+
+El `vocabulario` es lo que más mejora la transcripción de spanglish: mete los
+términos técnicos que uses a diario. La sección `[manos_libres]` controla el modo
+wake word (Vosk, ~39 MB, se descarga la primera vez que se activa).
+
+## Desarrollo
+
+```powershell
+.venv\Scripts\pip install -e ".[dev]"
+.venv\Scripts\python -m pytest          # 65 tests
+```
+
+Para calibrar el wake word en vivo (ver qué reconoce Vosk y con qué confianza, y
+ajustar el umbral) hay un arnés manual:
+
+```powershell
+.venv\Scripts\python tests\manual_wakeword_live.py
+```
 
 ## Licencia
 
