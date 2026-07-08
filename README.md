@@ -73,7 +73,7 @@ dicta abre **un solo** stream de micrófono (16 kHz mono) y lo reparte por un
 **AudioBus** compartido a quien lo necesite, sin pelearse por el dispositivo:
 
 - **Wake word** (Vosk, local): escucha la palabra clave solo en estado `ARMED`.
-- **Recorder**: acumula audio mientras dictas (`LISTENING`).
+- **Recorder**: acumula audio mientras dictas (`LISTENING`).  `
 - **SilenceDetector** (VAD): en manos libres, corta solo al detectar silencio sostenido.
 - **Whisper** (faster-whisper, GPU): transcribe al terminar (`TRANSCRIBING`).
 - **Injector**: pega el texto en la ventana activa (y pulsa Enter en manos libres).
