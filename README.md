@@ -12,25 +12,28 @@ solo). Whisper para transcribir, Vosk para la palabra clave — ambos en local.
 
 ## Requisitos
 
-- Windows 11 x64
-- Python 3.11+
-- GPU NVIDIA con driver reciente (CUDA 12.8+ para RTX serie 50). Sin GPU funciona
-  en CPU (más lento; usa `model = "small"` en el config).
-- Micrófono
+- Windows 11 x64 · Python 3.11–3.13 (64 bits) · micrófono
+- GPU NVIDIA con driver CUDA 12.x (12.8+ para RTX serie 50). **Opcional**: sin GPU
+  funciona en CPU, más lento (usa `model = "small"` en el config).
+- ¿Mac? El port a macOS vive en la rama [`mac`](https://github.com/bygaliax/dicta/tree/mac),
+  todavía sin mergear. Ver [INSTALL.md](INSTALL.md#3-instalación-en-macos).
 
 ## Instalación
 
 ```powershell
-git clone https://github.com/irisdigitllab/dicta.git
+git clone https://github.com/bygaliax/dicta.git
 cd dicta
 python -m venv .venv
 .venv\Scripts\pip install -e .
-# DLLs de CUDA que faster-whisper necesita en Windows:
+# Solo con GPU NVIDIA — DLLs de CUDA que faster-whisper necesita en Windows:
 .venv\Scripts\pip install nvidia-cublas-cu12 nvidia-cudnn-cu12
 ```
 
 dicta registra automáticamente esas DLLs al arrancar (busca las carpetas
 `Lib\site-packages\nvidia\*\bin` del venv), así que no hace falta tocar el PATH.
+
+**Guía completa paso a paso, verificación y solución de problemas:
+[INSTALL.md](INSTALL.md).**
 
 ## Uso manual
 
@@ -137,4 +140,4 @@ ajustar el umbral) hay un arnés manual:
 
 ## Licencia
 
-MIT — [IRIS Digital Lab](https://github.com/irisdigitllab)
+MIT — [Galiax](https://github.com/bygaliax)
