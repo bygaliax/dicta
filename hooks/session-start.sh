@@ -18,8 +18,8 @@ if [ -f "$PIDFILE" ]; then
 fi
 
 if [ "$running" -eq 0 ]; then
-  # AJUSTAR: ruta real del clon de dicta
-  REPO="$HOME/Desktop/InProgress/dicta"
+  # El repo es la carpeta que contiene a hooks/: no hay nada que ajustar a mano.
+  REPO="$(cd "$(dirname "$0")/.." && pwd)"
   PY="$REPO/.venv/bin/python"
   nohup "$PY" -m dicta >/dev/null 2>&1 &
 fi

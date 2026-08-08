@@ -10,6 +10,10 @@ Dos modos: **click** (click para empezar, click para terminar, tú revisas y env
 y **manos libres** (dices "Claude", hablas, y al callarte se transcribe y se envía
 solo). Whisper para transcribir, Vosk para la palabra clave — ambos en local.
 
+> **Estás en la rama `mac`.** Este README describe el comportamiento en Windows.
+> Para instalar y usar dicta en macOS —permisos del sistema, ajustes recomendados
+> y las diferencias del port— lee **[MAC.md](MAC.md)**.
+
 ## Requisitos
 
 - Windows 11 x64
@@ -21,7 +25,7 @@ solo). Whisper para transcribir, Vosk para la palabra clave — ambos en local.
 ## Instalación
 
 ```powershell
-git clone https://github.com/irisdigitllab/dicta.git
+git clone https://github.com/bygaliax/dicta.git
 cd dicta
 python -m venv .venv
 .venv\Scripts\pip install -e .
@@ -137,4 +141,4 @@ ajustar el umbral) hay un arnés manual:
 
 ## Licencia
 
-MIT — [IRIS Digital Lab](https://github.com/irisdigitllab)
+MIT — [Galiax](https://github.com/bygaliax)
