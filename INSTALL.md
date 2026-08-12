@@ -44,7 +44,7 @@ funciona sin red.
 | **Python** | 3.11, 3.12 o 3.13, **de 64 bits**. Probado a diario en 3.12 |
 | **GPU** | *Opcional.* NVIDIA con driver que soporte CUDA 12.x. Para las RTX serie 50 (Blackwell) hace falta un driver con CUDA 12.8 o superior. **Sin GPU también funciona**, en CPU (ver [§2.4](#24-sin-gpu-nvidia)) |
 | **Micrófono** | Cualquiera que Windows reconozca como dispositivo de entrada |
-| **Altavoces / auriculares** | Solo si usas la voz de salida (v3, [§5](#5-hooks-de-claude-code-arranque-automático)): cualquier dispositivo de salida que Windows reconozca |
+| **Altavoces / auriculares** | Para **oír** la voz de salida (v3): dicta reproduce audio cuando los hooks `Notification`/`Stop` ([§5](#5-hooks-de-claude-code-arranque-automático)) encolan algo que leer. Sin esos hooks, el modelo se descarga y carga igual (es config, no hooks — ver fila de abajo), pero nunca llega a sonar |
 | **Git** | Para clonar el repositorio |
 
 Python 3.11 es el mínimo real, no una preferencia: dicta lee su configuración con
@@ -69,11 +69,12 @@ Python 3.11 es el mínimo real, no una preferencia: dicta lee su configuración 
 | Modelo Whisper `large-v3` (se descarga en la 1.ª ejecución) | ~3 GB |
 | Modelo Whisper `small` (alternativa para CPU) | ~0,5 GB |
 | Modelo Vosk del wake word (solo si usas manos libres) | ~39 MB |
-| Modelo Kokoro de la voz de salida (solo si usas los hooks `Notification`/`Stop`, ver [§5](#5-hooks-de-claude-code-arranque-automático)) | ~310 MB |
+| Modelo Kokoro de la voz de salida (se descarga en la 1.ª ejecución de `python -m dicta` si `[voz] activado = true` en el config — **es el valor por defecto**, ni depende ni espera a que instales los hooks del [§5](#5-hooks-de-claude-code-arranque-automático)) | ~310 MB |
 
-En total: **~6 GB** en una instalación completa con GPU y `large-v3`; **~2 GB** en
-una instalación de CPU con `small`. Si además usas la voz de salida, suma
-**~310 MB** del modelo Kokoro.
+En total: **~6,3 GB** en una instalación completa con GPU y `large-v3` (con la voz
+de salida activada por defecto); **~2,3 GB** en una instalación de CPU con
+`small`. Pon `[voz] activado = false` en el config ([§4](#4-configuración)) si no
+quieres bajar el modelo de voz.
 
 Las descargas ocurren una sola vez. Después, dicta funciona sin conexión.
 
