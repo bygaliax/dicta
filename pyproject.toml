@@ -12,6 +12,7 @@ dependencies = [
     "pywin32>=306",
     "keyboard>=0.13",
     "vosk>=0.3.45",
+    "kokoro-onnx>=0.4",
 ]
 
 [project.optional-dependencies]
