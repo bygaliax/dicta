@@ -16,7 +16,7 @@ from dicta.docking import Docker
 from dicta.focus_tracker import FocusTracker
 from dicta.recorder import Recorder
 from dicta.silence import SilenceDetector
-from dicta.speak_queue import drenar_cola, preparar
+from dicta.speak_queue import drenar_cola, encolar, preparar
 from dicta.state import State, StateMachine
 from dicta.widget import DictaWidget
 
@@ -286,7 +286,7 @@ def main() -> int:
 
     # --- voz de salida (v3): cola de los hooks -> Kokoro ---
     voz_holder: dict = {}                       # {"s": Speaker} cuando cargue
-    pendientes: list[tuple[str, bool]] = []     # (texto, abre_mic)
+    pendientes: list[tuple[str, str, bool]] = []  # (kind, texto, abre_mic)
     voz_on = {"v": cfg.voz_activada}
 
     def load_voz() -> None:
@@ -319,20 +319,25 @@ def main() -> int:
             return
         if "s" not in voz_holder:
             return  # aún cargando; el coalescing mantiene la cola corta
-        texto, abre_mic = pendientes[0]
+        _kind, texto, abre_mic = pendientes[0]
         if sm.speak_request(abre_mic):
             pendientes.pop(0)
-            voz_holder["s"].speak(texto)
+            # Speaker.speak() devuelve False si ya hay un hilo hablando (ventana
+            # ínfima entre speak_request y este llamado): sin esto dicta se
+            # queda mudo en SPEAKING hasta el próximo click.
+            if not voz_holder["s"].speak(texto):
+                sm.speak_done()
 
     def revisar_cola() -> None:
         items = drenar_cola(SPEAK_DIR)
         if items:
-            pendientes.extend(
-                preparar(
-                    items, cfg.voz_max_caracteres, cfg.leer_avisos,
-                    cfg.leer_cierres, cfg.escuchar_tras_pregunta,
-                )
+            nuevos = preparar(
+                items, cfg.voz_max_caracteres, cfg.leer_avisos,
+                cfg.leer_cierres, cfg.escuchar_tras_pregunta,
             )
+            # encolar() vive en speak_queue: coalescea cierres viejos aún no
+            # hablados cuando entra un cierre nuevo en un tick distinto.
+            pendientes[:] = encolar(pendientes, nuevos)
         intentar_hablar()
 
     speak_timer = QTimer()
