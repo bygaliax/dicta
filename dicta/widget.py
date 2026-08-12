@@ -33,6 +33,7 @@ _STYLES = {
     State.ARMED: (_IVORY, _CLAY, "bars-wave", CIRCLE),
     State.LISTENING: (_CLAY, _IVORY, "bars-live", PILL_W),
     State.TRANSCRIBING: (_INK, _IVORY, "dots", PILL_W),
+    State.SPEAKING: (_IVORY, _INK, "bars-live", PILL_W),
     State.ERROR: (_DARK_RED, _IVORY, "bang", CIRCLE),
 }
 
@@ -44,6 +45,7 @@ _TIPS = {
     State.ARMED: 'dicta — di "Claude" o haz click para dictar',
     State.LISTENING: "Escuchando… click para terminar",
     State.TRANSCRIBING: "Transcribiendo…",
+    State.SPEAKING: "Claude hablando… click para contestar",
     State.ERROR: "Error — click para reintentar (mira la consola)",
 }
 
@@ -71,6 +73,7 @@ class DictaWidget(QWidget):
     quit_requested = pyqtSignal()
     drag_finished = pyqtSignal()
     handsfree_toggled = pyqtSignal(bool)
+    voice_toggled = pyqtSignal(bool)
 
     def __init__(self) -> None:
         super().__init__()
@@ -85,6 +88,7 @@ class DictaWidget(QWidget):
         self._moved = False
         self._hovered = False
         self._handsfree = False
+        self._voice = True
 
         self._bg = QColor(_IVORY)
         self._fg = QColor(_GRAY)
@@ -154,6 +158,9 @@ class DictaWidget(QWidget):
 
     def set_handsfree(self, enabled: bool) -> None:
         self._handsfree = enabled
+
+    def set_voice(self, enabled: bool) -> None:
+        self._voice = enabled
 
     def is_dragging(self) -> bool:
         return self._drag_offset is not None and self._moved
@@ -316,6 +323,10 @@ class DictaWidget(QWidget):
         hf.setCheckable(True)
         hf.setChecked(self._handsfree)
         hf.toggled.connect(self.handsfree_toggled.emit)
+        voz = menu.addAction("Voz")
+        voz.setCheckable(True)
+        voz.setChecked(self._voice)
+        voz.toggled.connect(self.voice_toggled.emit)
         menu.addSeparator()
         menu.addAction("Salir", self.quit_requested.emit)
         menu.exec(e.globalPos())
