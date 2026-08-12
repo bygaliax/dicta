@@ -16,11 +16,13 @@ from dicta.docking import Docker
 from dicta.focus_tracker import FocusTracker
 from dicta.recorder import Recorder
 from dicta.silence import SilenceDetector
+from dicta.speak_queue import drenar_cola, preparar
 from dicta.state import State, StateMachine
 from dicta.widget import DictaWidget
 
 STATE_FILE = APP_DIR / "state.json"
 MODELS_DIR = APP_DIR / "models"
+SPEAK_DIR = APP_DIR / "speak"
 EXAMPLE_CONFIG = Path(__file__).parent.parent / "config.example.toml"
 
 
@@ -38,6 +40,9 @@ class Bridge(QObject):
     wake_failed = pyqtSignal()
     silence_event = pyqtSignal(str)  # "silence" | "timeout"
     mic_level = pyqtSignal(float)
+    speak_done = pyqtSignal()
+    speak_level = pyqtSignal(float)
+    voz_failed = pyqtSignal()
 
 
 def load_ui_state() -> dict:
@@ -278,6 +283,81 @@ def main() -> int:
     widget.set_handsfree(cfg.manos_libres_activado)
     if cfg.manos_libres_activado:
         launch_wakeword_load()
+
+    # --- voz de salida (v3): cola de los hooks -> Kokoro ---
+    voz_holder: dict = {}                       # {"s": Speaker} cuando cargue
+    pendientes: list[tuple[str, bool]] = []     # (texto, abre_mic)
+    voz_on = {"v": cfg.voz_activada}
+
+    def load_voz() -> None:
+        try:
+            from dicta.speaker import crear_speaker
+
+            voz_holder["s"] = crear_speaker(
+                cfg, MODELS_DIR, bridge.speak_level.emit,
+                bridge.speak_done.emit,
+            )
+            print("Voz lista.")
+        except Exception as exc:
+            print(f"Voz no disponible: {exc}", file=sys.stderr)
+            bridge.voz_failed.emit()
+
+    if cfg.voz_activada:
+        threading.Thread(target=load_voz, daemon=True).start()
+
+    def on_voz_failed() -> None:
+        voz_on["v"] = False
+        widget.set_voice(False)
+
+    bridge.voz_failed.connect(on_voz_failed)
+
+    def intentar_hablar() -> None:
+        if not pendientes:
+            return
+        if not voz_on["v"]:
+            pendientes.clear()  # muteado o sin motor: la cola no debe crecer
+            return
+        if "s" not in voz_holder:
+            return  # aún cargando; el coalescing mantiene la cola corta
+        texto, abre_mic = pendientes[0]
+        if sm.speak_request(abre_mic):
+            pendientes.pop(0)
+            voz_holder["s"].speak(texto)
+
+    def revisar_cola() -> None:
+        items = drenar_cola(SPEAK_DIR)
+        if items:
+            pendientes.extend(
+                preparar(
+                    items, cfg.voz_max_caracteres, cfg.leer_avisos,
+                    cfg.leer_cierres, cfg.escuchar_tras_pregunta,
+                )
+            )
+        intentar_hablar()
+
+    speak_timer = QTimer()
+    speak_timer.timeout.connect(revisar_cola)
+    speak_timer.start(500)
+
+    bridge.speak_done.connect(sm.speak_done)
+    bridge.speak_level.connect(widget.set_level)
+    sm.on_stop_speaking.append(
+        lambda: voz_holder["s"].stop() if "s" in voz_holder else None
+    )
+
+    def reintentar_pendientes(state: State) -> None:
+        if state in (State.IDLE, State.ARMED) and pendientes:
+            QTimer.singleShot(0, intentar_hablar)
+
+    sm.on_change.append(reintentar_pendientes)
+
+    def on_voice_toggled(enabled: bool) -> None:
+        voz_on["v"] = enabled
+        if not enabled and "s" in voz_holder:
+            voz_holder["s"].stop()  # si estaba hablando, silencio inmediato
+
+    widget.voice_toggled.connect(on_voice_toggled)
+    widget.set_voice(cfg.voz_activada)
 
     # --- carga del modelo en background ---
     def load_model() -> None:
