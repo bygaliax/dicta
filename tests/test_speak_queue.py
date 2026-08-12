@@ -69,9 +69,10 @@ def test_unlink_bloqueado_no_crashea_y_no_consume(tmp_path, monkeypatch):
 
 
 def test_preparar_cierre_con_pregunta_abre_mic():
+    # v3.1: el cierre acumula la prosa final que quepa, no solo el último párrafo.
     items = [SpeakItem("cierre", "Hecho.\n\n¿Sigo con el resto?")]
     assert preparar(items, 400, True, True, True) == [
-        ("cierre", "¿Sigo con el resto?", True)
+        ("cierre", "Hecho. ¿Sigo con el resto?", True)
     ]
 
 
