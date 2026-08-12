@@ -50,3 +50,14 @@ Entorno: Windows 11 x64, venv con deps completas, micrófono conectado.
 - [ ] Renombrar temporalmente las DLLs de CUDA (o forzar fallo) → arranca en CPU con aviso en consola
 - [ ] Desconectar micrófono y hacer click → widget en error (círculo rojo con !), click lo recupera
 - [ ] Cerrar la terminal destino antes de que termine la transcripción → beep de error, texto queda en clipboard
+
+## v3 — voz de salida
+
+- [ ] Respuesta de Claude que termina en pregunta → dicta la lee → ding →
+      contestas → aparece en la terminal con Enter.
+- [ ] Respuesta sin pregunta → dicta lee el cierre y vuelve a reposo sin abrir mic.
+- [ ] Aviso de permiso → lo lee, NO abre mic.
+- [ ] Click durante la lectura corta la voz y abre escucha.
+- [ ] El TTS diciendo "Claude" no dispara el wake word.
+- [ ] Check "Voz" del menú apaga/enciende al vuelo.
+- [ ] Validar la voz ef_dora con los oídos de Robert; si no convence, plan B Piper.

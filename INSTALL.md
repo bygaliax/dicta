@@ -5,9 +5,11 @@ para alguien que no ha visto el proyecto antes: cada paso dice qué hace, qué d
 salir por pantalla y qué hacer si sale otra cosa.
 
 dicta es dictado por voz **100 % local**: Whisper transcribe en tu máquina y nada
-sale a internet. Solo necesitas conexión **durante la instalación** y la primera
-ejecución (para bajar las dependencias y los modelos). A partir de ahí funciona
-sin red.
+sale a internet. Desde la v3 también te habla — lee avisos y el cierre de cada
+respuesta con TTS local (Kokoro), ver [§5](#5-hooks-de-claude-code-arranque-automático)
+— sin salir tampoco a la red. Solo necesitas conexión **durante la instalación** y
+la primera ejecución (para bajar las dependencias y los modelos). A partir de ahí
+funciona sin red.
 
 > ### ⚠ Antes de nada: elige la rama correcta
 >
@@ -66,9 +68,11 @@ Python 3.11 es el mínimo real, no una preferencia: dicta lee su configuración 
 | Modelo Whisper `large-v3` (se descarga en la 1.ª ejecución) | ~3 GB |
 | Modelo Whisper `small` (alternativa para CPU) | ~0,5 GB |
 | Modelo Vosk del wake word (solo si usas manos libres) | ~39 MB |
+| Modelo Kokoro de la voz de salida (solo si usas los hooks `Notification`/`Stop`, ver [§5](#5-hooks-de-claude-code-arranque-automático)) | ~310 MB |
 
 En total: **~6 GB** en una instalación completa con GPU y `large-v3`; **~2 GB** en
-una instalación de CPU con `small`.
+una instalación de CPU con `small`. Si además usas la voz de salida, suma
+**~310 MB** del modelo Kokoro.
 
 Las descargas ocurren una sola vez. Después, dicta funciona sin conexión.
 
@@ -186,12 +190,27 @@ Descargando modelo de wake word (vosk-model-small-es-0.42, ~39 MB)…
 Modelo de wake word listo.
 ```
 
+La voz de salida (`[voz] activado = true` por defecto, ver [§4](#4-configuración))
+carga en un hilo aparte al arrancar, así que no bloquea el dictado. La primera vez
+descarga el modelo Kokoro (~310 MB) a `%APPDATA%\dicta\models\kokoro\`:
+
+```
+Descargando kokoro-v1.0.onnx…
+Descargando voices-v1.0.bin…
+Voz lista.
+```
+
+Si algo falla (sin red, sin espacio, modelo corrupto), la consola muestra `Voz no
+disponible: ...` y dicta sigue funcionando normal con la voz apagada — no rompe el
+dictado.
+
 ### 2.6 Dónde queda todo
 
 | Qué | Dónde |
 |---|---|
 | Configuración, estado del widget, PID, contador de sesiones | `%APPDATA%\dicta\` |
 | Modelo del wake word (Vosk) | `%APPDATA%\dicta\models\` |
+| Modelo de la voz de salida (Kokoro ONNX) | `%APPDATA%\dicta\models\kokoro\` |
 | Modelos de Whisper (caché de Hugging Face) | `%USERPROFILE%\.cache\huggingface\hub\` |
 | Dependencias de Python | `.venv\` dentro del clon |
 
@@ -347,6 +366,18 @@ falte toma su valor por defecto.
 | `silencio_segundos` | número | `2.0` | Silencio que cierra el dictado y dispara la transcripción |
 | `auto_enviar` | booleano | `true` | Pulsar Enter tras pegar. **Solo afecta a manos libres**; el dictado por click nunca envía |
 
+**`[voz]`** — voz de salida (v3, ver [§5](#5-hooks-de-claude-code-arranque-automático))
+
+| Clave | Tipo | Por defecto | Qué hace |
+|---|---|---|---|
+| `activado` | booleano | `true` | Encender/apagar la voz de salida. También se cambia al vuelo desde el menú del widget (click derecho → Voz) |
+| `voz` | texto | `"ef_dora"` | Voz de Kokoro. En español: `ef_dora`, `em_alex`, `em_santa` |
+| `velocidad` | número | `1.0` | Multiplicador de velocidad de la síntesis |
+| `max_caracteres` | número | `400` | Tope del cierre leído en voz alta (corta por frase, no a media palabra) |
+| `leer_avisos` | booleano | `true` | Leer los avisos del hook `Notification` (permisos, "esperando input") |
+| `leer_cierres` | booleano | `true` | Leer el último párrafo de cada respuesta (hook `Stop`) |
+| `escuchar_tras_pregunta` | booleano | `true` | Abrir el micrófono solo (ding + espera) cuando lo leído termina en pregunta |
+
 ---
 
 ## 5. Hooks de Claude Code (arranque automático)
@@ -388,13 +419,41 @@ ruta real de tu clon.
           }
         ]
       }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\ruta\\a\\dicta\\hooks\\notification.ps1\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"C:\\ruta\\a\\dicta\\hooks\\stop.ps1\""
+          }
+        ]
+      }
     ]
   }
 }
 ```
 
-Sustituye `C:\\ruta\\a\\dicta` por la ruta real de tu clon. Las barras van
-**dobladas**, porque en JSON la barra invertida es un carácter de escape.
+Sustituye `C:\\ruta\\a\\dicta` por la ruta real de tu clon, en los cuatro bloques.
+Las barras van **dobladas**, porque en JSON la barra invertida es un carácter de
+escape.
+
+`SessionStart`/`SessionEnd` abren y cierran dicta con la sesión (arriba).
+`Notification`/`Stop` son la voz de salida (v3): `notification.ps1` encola los
+avisos (permisos, "esperando input") y `stop.ps1` encola el cierre de cada
+respuesta para que dicta lo lea con TTS local. Son independientes entre sí —
+puedes registrar solo los dos primeros, solo los dos últimos, o los cuatro a la
+vez. Configuración de la voz en `[voz]` ([§4](#4-configuración)).
 
 **macOS** — mismo archivo, con los scripts `.sh` de la rama `mac`:
 
@@ -431,8 +490,11 @@ Dale permiso de ejecución la primera vez:
 chmod +x hooks/session-start.sh hooks/session-end.sh
 ```
 
-**Para quitarlos**, borra los bloques `SessionStart` y `SessionEnd` de
-`settings.json` y elimina el contador:
+> La voz de salida (`Notification`/`Stop`) todavía no tiene script `.sh`
+> equivalente: por ahora es exclusiva de la rama `main` (Windows).
+
+**Para quitarlos**, borra los bloques `SessionStart`, `SessionEnd`, `Notification`
+y `Stop` (los que hayas puesto) de `settings.json` y elimina el contador:
 
 ```powershell
 Remove-Item "$env:APPDATA\dicta\sessions.count"    # Windows
@@ -463,7 +525,7 @@ necesitan hardware ni conexión.
 
 | Rama | Resultado esperado |
 |---|---|
-| `main` (Windows) | `65 passed` |
+| `main` (Windows) | `106 passed` |
 | `mac` (macOS) | `55 passed, 10 failed` — ver abajo |
 
 > **En la rama `mac`, 10 tests fallan y es esperado.** El port movió los imports de
