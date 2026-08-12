@@ -23,6 +23,11 @@ if ($text.Length -gt 4000) { $text = $text.Substring($text.Length - 4000) }
 $dir = Join-Path $env:APPDATA "dicta\speak"
 New-Item -ItemType Directory -Force $dir | Out-Null
 $ts = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
+# Escritura atomica: se escribe a .tmp y se renombra al final. Así el drain
+# (que solo globa *.json) nunca ve un archivo a medio escribir.
+$final = Join-Path $dir "$ts-cierre.json"
+$tmp = "$final.tmp"
 @{ ts = $ts; kind = "cierre"; text = $text } | ConvertTo-Json -Compress |
-    Set-Content -Encoding utf8 (Join-Path $dir "$ts-cierre.json")
+    Set-Content -Encoding utf8 $tmp
+Rename-Item $tmp $final
 exit 0
