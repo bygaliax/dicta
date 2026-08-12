@@ -108,8 +108,8 @@ python -m venv .venv
 ```
 
 Esto instala PyQt6 (la interfaz), faster-whisper (transcripción), sounddevice
-(micrófono), pywin32 (ventanas y portapapeles), keyboard (atajo global) y vosk
-(palabra clave). Tarda unos minutos.
+(micrófono), pywin32 (ventanas y portapapeles), keyboard (atajo global), vosk
+(palabra clave) y kokoro-onnx (voz de salida). Tarda unos minutos.
 
 El entorno virtual queda dentro de `.venv\` y **no** se sube al repositorio. Todos
 los comandos de esta guía lo invocan por su ruta (`.venv\Scripts\...`), así que no
