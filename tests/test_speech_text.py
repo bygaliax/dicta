@@ -81,6 +81,21 @@ def test_todo_ruido_devuelve_vacio():
     assert ultimo_parrafo(text) == ""
 
 
+def test_quita_simbolos_que_el_tts_vocaliza_raro():
+    # Flechas, rayas, puntos medios y ≈ no deben llegar a la voz.
+    text = "Settings → Payments → activar Klarna — coste ≈ 8% · plan Basic."
+    assert ultimo_parrafo(text) == "Settings Payments activar Klarna coste 8% plan Basic."
+
+
+def test_quita_emojis():
+    assert ultimo_parrafo("Listo ✅ todo verde 🚀.") == "Listo todo verde ."
+
+
+def test_conserva_puntuacion_normal_y_acentos():
+    text = "¿Vale así? ¡Sí! Cuesta $35, o sea, el 2.9%; nada más."
+    assert ultimo_parrafo(text) == text
+
+
 def test_tope_corta_por_frase_conservando_el_final():
     frases = [f"Frase de relleno número {i}." for i in range(30)]
     text = " ".join(frases) + " ¿Te parece bien?"

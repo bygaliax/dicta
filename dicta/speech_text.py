@@ -44,6 +44,9 @@ def _limpiar(text: str) -> str:
     text = _URL.sub("", text)
     text = re.sub(r"^\s*[#>\-*]+\s*", "", text, flags=re.M)
     text = re.sub(r"[*_`]+", "", text)
+    # Símbolos que el TTS vocaliza raro (flechas, rayas, ·, ≈, emojis): fuera.
+    # Se conserva solo puntuación normal, moneda y porcentaje.
+    text = re.sub(r"[^\w\s.,;:¿?¡!()%$€'\"-]", " ", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
