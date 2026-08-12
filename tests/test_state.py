@@ -159,3 +159,93 @@ def test_fail_resetea_session_handsfree():
     sm.wake_detected()
     sm.fail()
     assert sm.session_handsfree is False
+
+
+# --- v3: voz de salida ---
+
+def make_sm_voz():
+    sm = StateMachine(handsfree_enabled=True)
+    events = []
+    sm.on_change.append(lambda s: events.append(s))
+    sm.on_start_listening.append(lambda: events.append("START_REC"))
+    sm.on_stop_speaking.append(lambda: events.append("STOP_SPEAK"))
+    sm.model_ready()
+    events.clear()
+    return sm, events
+
+
+def test_speak_request_desde_armed():
+    sm, _ = make_sm_voz()
+    assert sm.speak_request(abre_mic=False) is True
+    assert sm.state is State.SPEAKING
+
+
+def test_speak_request_desde_idle():
+    sm = StateMachine(handsfree_enabled=False)
+    sm.model_ready()
+    assert sm.speak_request(abre_mic=False) is True
+    assert sm.state is State.SPEAKING
+
+
+def test_speak_request_rechazado_si_dictando():
+    sm, _ = make_sm_voz()
+    sm.wake_detected()
+    assert sm.speak_request(abre_mic=False) is False
+    assert sm.state is State.LISTENING
+
+
+def test_speak_request_rechazado_si_transcribiendo():
+    sm, _ = make_sm_voz()
+    sm.wake_detected()
+    sm.silence_detected()
+    assert sm.speak_request(abre_mic=True) is False
+    assert sm.state is State.TRANSCRIBING
+
+
+def test_speak_done_sin_pregunta_vuelve_a_reposo():
+    sm, events = make_sm_voz()
+    sm.speak_request(abre_mic=False)
+    sm.speak_done()
+    assert sm.state is State.ARMED
+    assert "START_REC" not in events
+
+
+def test_speak_done_con_pregunta_abre_escucha_manos_libres():
+    sm, events = make_sm_voz()
+    sm.speak_request(abre_mic=True)
+    sm.speak_done()
+    assert sm.state is State.LISTENING
+    assert sm.session_handsfree is True
+    assert "START_REC" in events
+
+
+def test_click_durante_speaking_corta_y_abre_escucha():
+    sm, events = make_sm_voz()
+    sm.speak_request(abre_mic=False)
+    events.clear()
+    sm.click()
+    assert events == ["STOP_SPEAK", State.LISTENING, "START_REC"]
+    assert sm.session_handsfree is True
+
+
+def test_speak_done_tras_click_es_noop():
+    # El stop() del speaker dispara on_done igualmente; no debe romper nada.
+    sm, _ = make_sm_voz()
+    sm.speak_request(abre_mic=True)
+    sm.click()
+    sm.speak_done()
+    assert sm.state is State.LISTENING
+
+
+def test_wake_ignorado_durante_speaking():
+    sm, _ = make_sm_voz()
+    sm.speak_request(abre_mic=False)
+    sm.wake_detected()
+    assert sm.state is State.SPEAKING
+
+
+def test_fail_durante_speaking_va_a_error():
+    sm, _ = make_sm_voz()
+    sm.speak_request(abre_mic=False)
+    sm.fail()
+    assert sm.state is State.ERROR
