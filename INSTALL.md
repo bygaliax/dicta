@@ -44,6 +44,7 @@ funciona sin red.
 | **Python** | 3.11, 3.12 o 3.13, **de 64 bits**. Probado a diario en 3.12 |
 | **GPU** | *Opcional.* NVIDIA con driver que soporte CUDA 12.x. Para las RTX serie 50 (Blackwell) hace falta un driver con CUDA 12.8 o superior. **Sin GPU también funciona**, en CPU (ver [§2.4](#24-sin-gpu-nvidia)) |
 | **Micrófono** | Cualquiera que Windows reconozca como dispositivo de entrada |
+| **Altavoces / auriculares** | Solo si usas la voz de salida (v3, [§5](#5-hooks-de-claude-code-arranque-automático)): cualquier dispositivo de salida que Windows reconozca |
 | **Git** | Para clonar el repositorio |
 
 Python 3.11 es el mínimo real, no una preferencia: dicta lee su configuración con
