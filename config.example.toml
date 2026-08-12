@@ -19,3 +19,12 @@ palabra = "claude"
 confianza = 0.85          # 0–1: más alto = menos falsos positivos (y más exigente)
 silencio_segundos = 2.0
 auto_enviar = true
+
+[voz]
+activado = true
+voz = "ef_dora"           # voz de Kokoro (español: ef_dora, em_alex, em_santa)
+velocidad = 1.0
+max_caracteres = 400      # tope del cierre leído en voz alta
+leer_avisos = true        # permisos y "esperando input"
+leer_cierres = true       # último párrafo de cada respuesta
+escuchar_tras_pregunta = true  # abrir el mic solo si lo leído es una pregunta

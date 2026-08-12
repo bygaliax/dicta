@@ -101,3 +101,34 @@ def test_silencio_segundos_entero_se_convierte_a_float(tmp_path: Path):
     cfg = load_config(p)
     assert cfg.silencio_segundos == 2.0
     assert isinstance(cfg.silencio_segundos, float)
+
+
+def test_voz_defaults_sin_seccion(tmp_path):
+    p = tmp_path / "config.toml"
+    p.write_text("[whisper]\nmodel = 'small'\n", encoding="utf-8")
+    cfg = load_config(p)
+    assert cfg.voz_activada is True
+    assert cfg.voz_nombre == "ef_dora"
+    assert cfg.voz_velocidad == 1.0
+    assert cfg.voz_max_caracteres == 400
+    assert cfg.leer_avisos is True
+    assert cfg.leer_cierres is True
+    assert cfg.escuchar_tras_pregunta is True
+
+
+def test_voz_seccion_completa(tmp_path):
+    p = tmp_path / "config.toml"
+    p.write_text(
+        "[voz]\nactivado = false\nvoz = 'em_alex'\nvelocidad = 1.2\n"
+        "max_caracteres = 250\nleer_avisos = false\nleer_cierres = false\n"
+        "escuchar_tras_pregunta = false\n",
+        encoding="utf-8",
+    )
+    cfg = load_config(p)
+    assert cfg.voz_activada is False
+    assert cfg.voz_nombre == "em_alex"
+    assert cfg.voz_velocidad == 1.2
+    assert cfg.voz_max_caracteres == 250
+    assert cfg.leer_avisos is False
+    assert cfg.leer_cierres is False
+    assert cfg.escuchar_tras_pregunta is False

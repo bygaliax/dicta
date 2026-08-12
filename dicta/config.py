@@ -23,6 +23,13 @@ class Config:
     wake_confianza: float = 0.85
     silencio_segundos: float = 2.0
     auto_enviar: bool = True
+    voz_activada: bool = True
+    voz_nombre: str = "ef_dora"
+    voz_velocidad: float = 1.0
+    voz_max_caracteres: int = 400
+    leer_avisos: bool = True
+    leer_cierres: bool = True
+    escuchar_tras_pregunta: bool = True
 
 
 def load_config(path: Path | None = None) -> Config:
@@ -41,6 +48,7 @@ def load_config(path: Path | None = None) -> Config:
     iny = data.get("inyeccion", {})
     hk = data.get("hotkey", {})
     ml = data.get("manos_libres", {})
+    voz = data.get("voz", {})
     cfg.model = w.get("model", cfg.model)
     cfg.language = w.get("language", cfg.language)
     cfg.vocabulario = list(w.get("vocabulario", cfg.vocabulario))
@@ -53,6 +61,15 @@ def load_config(path: Path | None = None) -> Config:
     cfg.wake_confianza = float(ml.get("confianza", cfg.wake_confianza))
     cfg.silencio_segundos = float(ml.get("silencio_segundos", cfg.silencio_segundos))
     cfg.auto_enviar = bool(ml.get("auto_enviar", cfg.auto_enviar))
+    cfg.voz_activada = bool(voz.get("activado", cfg.voz_activada))
+    cfg.voz_nombre = str(voz.get("voz", cfg.voz_nombre))
+    cfg.voz_velocidad = float(voz.get("velocidad", cfg.voz_velocidad))
+    cfg.voz_max_caracteres = int(voz.get("max_caracteres", cfg.voz_max_caracteres))
+    cfg.leer_avisos = bool(voz.get("leer_avisos", cfg.leer_avisos))
+    cfg.leer_cierres = bool(voz.get("leer_cierres", cfg.leer_cierres))
+    cfg.escuchar_tras_pregunta = bool(
+        voz.get("escuchar_tras_pregunta", cfg.escuchar_tras_pregunta)
+    )
     return cfg
 
 
